@@ -1,0 +1,19 @@
+# pimce6
+#export AKENEO_BASE_URL="http://localhost:8080"
+#export AKENEO_CLIENT_ID=1_bpyj9te9qzw4sswsc4kowkgwc4c4kggc8s4kgwk8ogo00cgg0
+#export AKENEO_EXPORT_PATH=data
+#export AKENEO_PASSWORD=fe26931c7
+#export AKENEO_SECRET=51lcsti3i1wkk4o8wo8k4goos0cwo0w4o8oo0k04s4gow408g0
+#export AKENEO_USERNAME=node_akeneo_8625
+
+# pimee6
+export AKENEO_BASE_URL="http://localhost:8080"
+export AKENEO_CLIENT_ID=5_5joq7lxsrjgogwkoso4ck84kwks084488wo80os80csocog0k8
+export AKENEO_EXPORT_PATH=data
+export AKENEO_PASSWORD=57366d735
+export AKENEO_SECRET=1qpk1h1uxd28ccckksow8skk84g808g0cwgsoc4k80w4084ks
+export AKENEO_USERNAME=node_akeneo_api_3048
+
+export LOG_LEVEL=debug
+
+mkdir -p $AKENEO_EXPORT_PATH

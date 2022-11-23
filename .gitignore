@@ -1,3 +1,8 @@
+# development files
+
+202*.txt
+data/
+
 # Logs
 logs
 *.log
