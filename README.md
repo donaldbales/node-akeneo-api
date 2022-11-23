@@ -32,15 +32,34 @@ AKENEO_PROMISE_LIMIT default 16
 AKENEO_SECRET
 AKENEO_TOKEN_URL default '/api/oauth/v1/token'
 AKENEO_USERNAME
+LOG_LEVEL default 'info'
 ```
 
-Client ID, Secret, Username, and Password are suppplied in Akeneo PIM Connections screen after you create a connection.
+Client ID, Secret, Username, and Password are supplied in Akeneo PIM Connections screen after you create a connection.
+
+When you set the LOG_LEVEL to debug, in addition to more logging detail, the HTTP methods save their raw responses to a file named after the method.
 
 ## Getting Started
 
+Here's the corresponding Akeneo PIM Web API documentation: [https://api.akeneo.com/api-reference-60.html](url).
+
 ```
 import * as akeneo from 'node-akeneo-api';
+
+let results: any[] = [];
+try {
+  // get products updated after 2022-01-01
+  results = await akeneo.get(
+    `${akeneo.apiUrlProducts()}?pagination_type=search_after` +
+    `&search={"updated":[{"operator":">","value":"2022-01-01 00:00:00"}]}`);
+} catch (err) {
+  // handle any errors...
+}
 ```
+
+I suggest you examine the export and import functions in the source code for examples: [https://github.com/donaldbales/node-akeneo-api](url).
+
+I also suggest you run each export function so you have data files with samples of the formatted JSON for each Akeneo PIM entity.
 
 ## Documentation
 
@@ -310,14 +329,18 @@ export async function exportProductModels(): Promise<any>;
 
 // Reference Entities (only avaialable in the enterprise edition) 
 export async function exportReferenceEntities(): Promise<any>;
-export async function exportReferenceEntityAttributeOptions(referenceEntityCode: string,
+export async function exportReferenceEntityAttributeOptions(
+  referenceEntityCode: string,
+  attributeCode: string): Promise<any>;
 export async function exportReferenceEntityAttributes(referenceEntityCode: string): Promise<any>;
 export async function exportReferenceEntityRecords(referenceEntityCode: string): Promise<any>;
 
 // Asset Families (only avaialable in the enterprise edition) 
 export async function exportAssetFamilies(): Promise<any>;
 export async function exportAssetFamilyAssets(assetFamilyCode: string): Promise<any>;
-export async function exportAssetFamilyAttributeOptions(assetFamilyCode: string,
+export async function exportAssetFamilyAttributeOptions(
+  assetFamilyCode: string,
+  attributeCode: string): Promise<any>;
 export async function exportAssetFamilyAttributes(assetFamilyCode: string): Promise<any>;
 
 // v3 PAM
@@ -348,7 +371,9 @@ export async function importProductModels(): Promise<any>;
 export async function importReferenceEntities(): Promise<any>;
 export async function importReferenceEntityAttributeOptions(): Promise<any>;
 export async function importReferenceEntityAttributes(): Promise<any>;
-export async function importReferenceEntityMediaFiles(referenceEntityCode: string, data: any[]): Promise<any[]>;
+export async function importReferenceEntityMediaFiles(
+  referenceEntityCode: string,
+  data: any[]): Promise<any[]>;
 export async function importReferenceEntityRecords(): Promise<any>;
 
 // Asset Families (only avaialable in the enterprise edition) 
@@ -356,11 +381,15 @@ export async function importAssetFamilies(): Promise<any>;
 export async function importAssetFamilyAssets(): Promise<any>;
 export async function importAssetFamilyAttributeOptions(): Promise<any>;
 export async function importAssetFamilyAttributes(): Promise<any>;
-export async function importAssetFamilyMediaFiles(assetFamilyCode: string, data: any[]): Promise<any[]>;
+export async function importAssetFamilyMediaFiles(
+  assetFamilyCode: string,
+  data: any[]): Promise<any[]>;
 ```
 
 ## Support
 
 Supports Node versions 12+.
 
-Feel free to email don@donaldbales.com with and complaints and questions.
+I know full well that some people consider publishing the generated Javascript code for Typescript a bad practice, but not everyone knows Typescript. So yes, I'm bad.
+
+Feel free to email don@donaldbales.com with and complaints, questions, and suggestions.

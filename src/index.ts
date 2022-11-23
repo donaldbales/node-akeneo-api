@@ -64,6 +64,10 @@ const possibleTasks: string[] = [
   'exportProductModels',
   'exportProducts',
   'exportReferenceEntities',
+  'importAssetFamilies',
+  'importAssetFamilyAssets',
+  'importAssetFamilyAttributeOptions',
+  'importAssetFamilyAttributes',
   'importAssociationTypes',
   'importAttributeGroups',
   'importAttributeOptions',
@@ -1270,7 +1274,7 @@ export async function get(apiUrl: string, callback: any = null): Promise<any> {
 
 export async function patch(apiUrl: string, data: any): Promise<any> {
   const methodName: string = 'patch';
-  logger.info({ moduleName, methodName, apiUrl, data }, `Starting...`);
+  logger.info({ moduleName, methodName, apiUrl }, `Starting...`);
   
   const dataString: string = JSON.stringify(data);
 
@@ -2932,17 +2936,21 @@ async function main(...args: string[]): Promise<any> {
   results = (tasks.importAttributeOptions) ? await importAttributeOptions() : [];
   results = (tasks.importCategories) ? await importCategories() : [];
   results = (tasks.importChannels) ? await importChannels() : [];
-  // TODO: results = (tasks.importCurrencies) ? await importCurrencies() : [];
+  // results = (tasks.importCurrencies) ? await importCurrencies() : []; // Not Supported by API
   results = (tasks.importFamilies) ? await importFamilies() : [];
   results = (tasks.importFamilyVariants) ? await importFamilyVariants() : [];
-  // TODO: results = (tasks.importLocales) ? await importLocales() : [];
-  // TODO: results = (tasks.importMeasureFamilies) ? await importMeasureFamilies() : [];
+  // results = (tasks.importLocales) ? await importLocales() : []; // Not Supported by API
+  // results = (tasks.importMeasureFamilies) ? await importMeasureFamilies() : []; // Not Supported by API
   results = (tasks.importProducts) ? await importProducts() : [];
   results = (tasks.importProductModels) ? await importProductModels() : [];
   results = (tasks.importReferenceEntities) ? await importReferenceEntities() : [];
   results = (tasks.importReferenceEntityAttributes) ? await importReferenceEntityAttributes() : [];
   results = (tasks.importReferenceEntityAttributeOptions) ? await importReferenceEntityAttributeOptions() : [];
   results = (tasks.importReferenceEntityRecords) ? await importReferenceEntityRecords() : [];
+  results = (tasks.importAssetFamilies) ? await importAssetFamilies() : [];
+  results = (tasks.importAssetFamilyAttributes) ? await importAssetFamilyAttributes() : [];
+  results = (tasks.importAssetFamilyAttributeOptions) ? await importAssetFamilyAttributeOptions() : [];
+  results = (tasks.importAssetFamilyAssets) ? await importAssetFamilyAssets() : [];
   // TODO: results = (tasks.importAssets) ? await importAssets() : [];
   // TODO: results = (tasks.importAssetCategories) ? await importAssetCategories() : [];
   // TODO: results = (tasks.importAssetReferenceFiles) ? await importAssetReferenceFiles() : [];

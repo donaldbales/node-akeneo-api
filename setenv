@@ -14,6 +14,6 @@ export AKENEO_PASSWORD=57366d735
 export AKENEO_SECRET=1qpk1h1uxd28ccckksow8skk84g808g0cwgsoc4k80w4084ks
 export AKENEO_USERNAME=node_akeneo_api_3048
 
-export LOG_LEVEL=debug
+export LOG_LEVEL=info
 
 mkdir -p $AKENEO_EXPORT_PATH

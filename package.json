@@ -1,6 +1,6 @@
 {
   "name": "node-akeneo-api",
-  "version": "1.0.0",
+  "version": "1.6.0",
   "description": "A Node module that supports the use of Akeneo PIM's Web API",
   "main": "index.js",
   "scripts": {
