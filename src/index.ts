@@ -1256,6 +1256,10 @@ export async function get(apiUrl: string, callback: any = null): Promise<any> {
         result._links.next &&
         result._links.next.href) {
       url = result._links.next.href;
+      const urlProtocol: string = url.slice(0, url.indexOf(':'));
+      if (urlProtocol !== baseProtocol) {
+        url = url.replace(urlProtocol, baseProtocol);
+      }
     } else {
       url = '';
     }

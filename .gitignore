@@ -2,6 +2,7 @@
 
 202*.txt
 data/
+notes.txt
 
 # Logs
 logs

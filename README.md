@@ -7,6 +7,7 @@ A NodeJS module that supports the use of Akeneo PIM's Web API
 This module supports Akeneo PIM Web API for Akeneo PIM 3.2 through 6.0+. It has been in use since 2019 in the node-akeneo integration framework: [https://github.com/donaldbales/node-akeneo](url)
 
 1.6.0 - [https://api.akeneo.com/api-reference-60.html](url)
+1.6.1 - Override protocol returned from Akeneo API on GET
 
 ## Installation
 
@@ -63,7 +64,7 @@ I also suggest you run each export function so you have data files with samples 
 
 ## Documentation
 
-This modufle was written in Typescript, so all my documentation and examples are in Typescript too.  By default, node-akeneo-api uses Bunyan for a logger.
+This module was written in Typescript, so all my documentation and examples are in Typescript too.  By default, node-akeneo-api uses Bunyan for a logger.
 
 ### Constants
 These exported constants may be used in an Javascript objects you create.
