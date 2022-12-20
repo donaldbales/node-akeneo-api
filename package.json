@@ -11,6 +11,7 @@
   "dependencies": {
     "bunyan": "^1.8.12",
     "change-case": "^4.1.1",
+    "form-data": "^3.0.0",
     "minimist": "^1.2.6"
   },
   "devDependencies": {

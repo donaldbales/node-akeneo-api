@@ -4,6 +4,7 @@ import * as _http from 'http';
 import * as _https from 'https';
 import * as bunyan from 'bunyan';
 import * as change from 'change-case';
+import * as FormData from 'form-data';
 import * as fs from 'fs';
 import * as minimist from 'minimist';
 import * as path from 'path';
@@ -61,6 +62,7 @@ const possibleTasks: string[] = [
   'exportFamilyVariants',
   'exportLocales',
   'exportMeasureFamilies',
+  'exportMediaFiles',
   'exportProductModels',
   'exportProducts',
   'exportReferenceEntities',
@@ -224,16 +226,19 @@ export function load(filename: string, map: Map<string, any>, key: string): Prom
   });  
 } 
 
-const baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
-const baseProtocol: string = baseUrl.slice(0, baseUrl.indexOf(':'));
-const clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
-const exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
-const password: string = (process.env.AKENEO_PASSWORD as string) || '';
-const patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
-const promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
-const secret: string = (process.env.AKENEO_SECRET as string) || '';
-const tokenUrl: string = (process.env.AKENEO_TOKEN_URL as string) || '/api/oauth/v1/token';
-const username: string = (process.env.AKENEO_USERNAME as string) || '';
+export let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
+export let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
+export let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
+export let password: string = (process.env.AKENEO_PASSWORD as string) || '';
+export let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
+export let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
+export let secret: string = (process.env.AKENEO_SECRET as string) || '';
+export let tokenUrl: string = (process.env.AKENEO_TOKEN_URL as string) || '/api/oauth/v1/token';
+export let username: string = (process.env.AKENEO_USERNAME as string) || '';
+
+export function baseProtocol(): string {
+  return baseUrl.slice(0, baseUrl.indexOf(':'));
+}
 
 const FIVE_MINUTES: number = 5 * 60 * 1000;
 
@@ -319,6 +324,8 @@ export let filenameReferenceEntityAttributes: string = 'referenceEntityAttribute
 export let filenameReferenceEntityAttributeOptions: string = 'referenceEntityAttributeOptions.vac';
 export let filenameReferenceEntityRecords: string = 'referenceEntityRecords.vac';
 
+export let filenameMediaFiles: string = 'mediaFiles.vac';
+
 export let filenameAssetFamilies: string = 'assetFamilies.vac';
 export let filenameAssetFamilyAttributes: string = 'assetFamilyAttributes.vac';
 export let filenameAssetFamilyAttributeOptions: string = 'assetFamilyAttributeOptions.vac';
@@ -334,11 +341,78 @@ export let filenameAssetVariationFiles: string = 'assetVariationFiles.vac';
 
 // Helper functions
 
-export const close: any = util.promisify(fs.close);
-export const open: any = util.promisify(fs.open);
+export function close(fd: number): Promise<boolean> {
+  return new Promise((resolve: any, reject: any) => {
+    fs.close(fd, (err) => {
+      if (err) {
+        console.error(inspect(err));
+        return reject(err);
+      } else {
+        return resolve(true);
+      }
+    });
+  });
+}
+
+export function mkdir(path: string): Promise<boolean> {
+  return new Promise((resolve: any, reject: any) => {
+    fs.mkdir(path, { recursive: true }, (err) => {
+      if (err) {
+        console.error(inspect(err));
+        return reject(err);
+      } else {
+        return resolve(true)
+      }
+    });
+  });
+}
+
+export function open(path: string, flags: string = 'r'): Promise<number> {
+  return new Promise((resolve: any, reject: any) => {
+    fs.open(path, flags, (err, fd) => {
+      if (err) {
+        console.error(inspect(err));
+        return reject(err);
+      } else {
+        return resolve(fd);
+      }
+    });
+  });
+}
+
 export const read: any = util.promisify(fs.readFile);
+
+export function stat(path: string): Promise<fs.Stats> {
+  return new Promise((resolve:any, reject: any) => {
+    fs.stat(path, (err, stats) => {
+      if (err) {
+        if (err.code !== 'ENOENT') {
+          console.error(inspect(err));
+          return null;
+        } else {
+          reject(err);
+        }
+      } else {
+        resolve(stats);
+      }
+    });
+  });
+}
+
 export const unlink: any = util.promisify(fs.unlink);
-export const write: any = util.promisify(fs.write);
+
+export function write(fd: number, data: Buffer | string): Promise<number> {
+  return new Promise((resolve: any, reject: any) => {
+    fs.write(fd, data, (err, written, bufferOrString) => {
+      if (err) {
+        console.error(inspect(err));
+        return reject(err);
+      } else {
+        return resolve(written);
+      }
+    });
+  });
+}
 
 export function assetCode(name: string): string {
   const tokens: any[] = name.split('-');
@@ -780,6 +854,93 @@ export async function delete_(apiUrl: string, data: any): Promise<any> {
     request.write(dataString);
     request.end();
   });
+}
+
+function splitMediaFileData(data: string): any {
+  // the underscore is used to separate the guid from the actual filename
+  /*
+  const parts: any[] = data.split('_');
+  const path: string = parts.length > 0 ? parts[0] : '';
+  const name: string = parts.length > 1 ? parts.slice(1, parts.length).join('_');
+  */
+  const results: any = {};
+  const firstUnderscoreAt: number = data.indexOf('_');
+  if (firstUnderscoreAt !== -1) {
+    results.path = data.slice(0, firstUnderscoreAt);
+    results.name = data.slice(firstUnderscoreAt + 1, data.length);
+  } else {
+    results.path = '';
+    results.name = data;
+  }
+
+  return results;
+}
+
+export async function download(data: string, url: string): Promise<any> {
+  const methodName: string = 'download';
+  logger.info({ moduleName, methodName, data, url }, `Starting...`);
+
+  let results: any = [];
+
+  if (!data ||
+      !url) {
+    return false;
+  }
+
+  logger.info({ moduleName, methodName }, `Making Dirs...`);
+  const pathAndFile: any = splitMediaFileData(data);
+  const pathParts: any[] = pathAndFile.path.split(path.sep);
+  let pathString: string = exportPath;
+  for (let i=0; i < pathParts.length; i++) {
+    pathString+= `${path.sep}${pathParts[i]}`;
+    try {
+      await mkdir(pathString);
+    } catch (err) {
+      if (err.code !== 'EEXIST') {
+        logger.error({ moduleName, methodName, error: inspect(err)});
+      }
+    }
+  }
+
+  const accessToken = await getToken();
+
+  const result: any = await new Promise((resolve: any, reject: any) => {
+    const options: any = {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/octet-stream'
+      },
+      method: 'GET'
+    };
+    const request: any = protocol.request(url, options, async (response: _http.IncomingMessage) => {
+      const stream: fs.WriteStream = fs.createWriteStream(path.join(path.join(exportPath, pathAndFile.path), pathAndFile.name));
+      const statusCode: number | undefined = response.statusCode;
+      const headers: any = response.headers;
+
+      logger.debug({ moduleName, methodName, statusCode });
+
+      if (statusCode &&
+          statusCode > 299) {
+        logger.warn({ moduleName, methodName, statusCode, headers, url}, `Error: ${response.statusMessage}`);
+      }
+
+      response.on('end', async () => {
+        logger.info({ moduleName, methodName, event: 'end' });
+        return resolve(OK);
+      });
+
+      response.pipe(stream);
+    });
+
+    request.on('error', async (err: any) => {
+      logger.error({ moduleName, methodName, event: 'error', err});
+      return reject(err);
+    });
+
+    request.end();
+  });
+
+  return result;
 }
 
 let getTokenCount: number = 0;
@@ -1257,8 +1418,8 @@ export async function get(apiUrl: string, callback: any = null): Promise<any> {
         result._links.next.href) {
       url = result._links.next.href;
       const urlProtocol: string = url.slice(0, url.indexOf(':'));
-      if (urlProtocol !== baseProtocol) {
-        url = url.replace(urlProtocol, baseProtocol);
+      if (urlProtocol !== baseProtocol()) {
+        url = url.replace(urlProtocol, baseProtocol());
       }
     } else {
       url = '';
@@ -1517,9 +1678,9 @@ export async function post(apiUrl: string, data: string): Promise<any> {
 }
 
 // https://www.npmjs.com/package/form-data
-export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStream): Promise<any> {
+export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStream, properties: any = {}): Promise<any> {
   const methodName: string = 'postMultipartFormData';
-  logger.info({ moduleName, methodName, apiUrl: apiUrl }, `Starting...`);
+  logger.info({ moduleName, methodName, apiUrl }, `Starting...`);
 
   const accessToken: string = await getToken();
 
@@ -1528,22 +1689,35 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
       logger.error({ moduleName, methodName, apiUrl: apiUrl }, `No Stream`);
       reject('');
     } 
-    const splitBaseUrl: any[] = baseUrl.split('/') 
-    const host: string = splitBaseUrl[2];
+    const splitBaseUrl: any[] = baseUrl.split('/');
+    const splitHost: any[] = splitBaseUrl[2].split(':');
+    const host: string = splitHost[0];
+    const port: number = Number.parseInt(splitHost[1] ? splitHost[1] : splitBaseUrl[0] === 'https:' ? '443' : '80');
     const protocol: string = splitBaseUrl[0];
-    const form: any = new FormData();
-    form.append('file', stream);
-    form.submit({
-      protocol,
+
+    const options: any = {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
       host,
       path: apiUrl,
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    }, async (err: any, response: _http.IncomingMessage) => {
+      port,
+      protocol
+    };
+    //console.log(options);
+    const form: any = new FormData();
+    form.append('file', stream);
+    if (properties.identifier) {
+      form.append('product', JSON.stringify(properties));
+    } else
+    if (properties.code) {
+      form.append('product_model', JSON.stringify(properties));
+    }
+    form.submit(options, async (err: any, response: _http.IncomingMessage) => {
       if (err) {
         const error: string = err.message ? err.message : inspect(err);
         logger.error({ moduleName, methodName, apiUrl: apiUrl, error }, `Error`);
         reject(err);
       } else {
+        //console.log(inspect(response));
         const statusCode: number | undefined = response.statusCode;
         const statusMessage: string | undefined = response.statusMessage;
         logger.info({ moduleName, methodName, apiUrl: apiUrl, statusCode });
@@ -1558,6 +1732,7 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
           }
         }
         const headers = response.headers;
+        //console.log(headers);
         if (((process.env.LOG_LEVEL as string) || 'info') === 'debug') {
           const fileDescriptor: number = await open(path.join(exportPath, 'postMultipartFormDataReponse.txt'), 'a');
           await write(fileDescriptor, inspect(response.headers));
@@ -1799,12 +1974,14 @@ export async function exportFamilies(): Promise<any> {
     const fileName: string = path.join(exportPath, filenameFamilies);
     const fileDesc: number = await open(fileName, 'w');
     for (const family of families) {
-      await write(fileDesc, Buffer.from(JSON.stringify(family) + '\n'));
-      try {
-        await exportFamilyVariants(family.code);
-      } catch (err) {
-        logger.info({ moduleName, methodName, err });
-        return err;
+      if (family.code) {
+        await write(fileDesc, Buffer.from(JSON.stringify(family) + '\n'));
+        try {
+          await exportFamilyVariants(family.code);
+        } catch (err) {
+          logger.info({ moduleName, methodName, err });
+          return err;
+        }
       }
     }
     await close(fileDesc);
@@ -1897,6 +2074,7 @@ export async function exportProducts(parameters: string = ''): Promise<any> {
   const fileName: string = path.join(exportPath, filenameProducts);
   const fileDesc: number = await open(fileName, 'w');
   let count: number = 0;
+
   try {
     products = await get(parameters ?
       `${apiUrlProducts()}?pagination_type=search_after&${parameters}` :
@@ -1917,6 +2095,44 @@ export async function exportProducts(parameters: string = ''): Promise<any> {
   logger.info({ moduleName, methodName, products: count });
   await close(fileDesc);
 
+  logger.info({ moduleName, methodName }, 'Exporting linked images...');
+
+  const productMediaFilesMap: Map<string, any> = new Map();
+  let stats: fs.Stats | null = null;
+  try {
+    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
+    await load(path.join(exportPath, 'productMediaFiles.vac'), productMediaFilesMap, 'fromHref');
+  } catch (err) {
+    console.error(inspect(err));
+  }
+  const productsMap: Map<string, any> = new Map();
+  await load(fileName, productsMap, 'identifier');
+  for (const product of productsMap.values()) {
+    const valueAttributes: any = product.values ? product.values : {};
+    for (const valueAttribute in valueAttributes) {
+      for (const valueObject of valueAttributes[valueAttribute]) {
+        if (valueObject.data &&
+            valueObject._links &&
+            valueObject._links.download &&
+            valueObject._links.download.href) {
+          const data: string = valueObject.data || '';
+          const href: string = valueObject._links.download.href || '';
+          if (!(productMediaFilesMap.has(href))) {
+            const downloadResults: any = await download(data, href);
+            if (downloadResults === OK) {
+              productMediaFilesMap.set(href, { fromData: data, fromHref: href });
+            }
+          }
+        }
+      }
+    }
+  }
+  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  for (const productMediaFile of productMediaFilesMap.values()) {
+    await write(mediaFileDesc, `${JSON.stringify(productMediaFile)}\n`);
+  }
+  await close(mediaFileDesc);
+
   return count;
 }
 
@@ -1925,23 +2141,68 @@ export async function exportProductModels(): Promise<any> {
   logger.info({ moduleName, methodName }, 'Starting...');
 
   let productModels: ProductModel[];
+  const fileName: string = path.join(exportPath, filenameProductModels);
+  const fileDesc: number = await open(fileName, 'w');
+  let count: number = 0;
+
   try {
-    productModels = await get(`${apiUrlProductModels()}?pagination_type=search_after`);
+    productModels = await get(`${apiUrlProductModels()}?pagination_type=search_after`, async (results: any) => {
+      let vac: string = '';
+      for (const result of results) {
+        vac += JSON.stringify(result) + '\n';
+        ++count;
+      }
+      const buffer: Buffer = Buffer.from(vac);
+      
+      await write(fileDesc, buffer); 
+    });
     logger.debug({ moduleName, methodName, productModels });
   } catch (err) {
     logger.info({ moduleName, methodName, err });
     return err;
   }
-  if (productModels !== null &&
-      typeof productModels[Symbol.iterator] === 'function') {
-    const fileName: string = path.join(exportPath, filenameProductModels);
-    const fileDesc: number = await open(fileName, 'w');
-    for (const productModel of productModels) {
-      await write(fileDesc, Buffer.from(JSON.stringify(productModel) + '\n'));
-    }
-    await close(fileDesc);
+  logger.info({ moduleName, methodName, productModels: count });
+  await close(fileDesc);
+
+  logger.info({ moduleName, methodName }, 'Exporting linked images...');
+
+  const productMediaFilesMap: Map<string, any> = new Map();
+  let stats: fs.Stats | null = null;
+  try {
+    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
+    await load(path.join(exportPath, 'productMediaFiles.vac'), productMediaFilesMap, 'fromHref');
+  } catch (err) {
+    console.error(inspect(err));
   }
-  return OK;
+  const productModelsMap: Map<string, any> = new Map();
+  await load(fileName, productModelsMap, 'code');
+  for (const productModel of productModelsMap.values()) {
+    const valueAttributes: any = productModel.values ? productModel.values : {};
+    for (const valueAttribute in valueAttributes) {
+      for (const valueObject of valueAttributes[valueAttribute]) {
+        if (valueObject.data &&
+            valueObject._links &&
+            valueObject._links.download &&
+            valueObject._links.download.href) {
+          const data: string = valueObject.data || '';
+          const href: string = valueObject._links.download.href || '';
+          if (!(productMediaFilesMap.has(href))) {
+            const downloadResults: any = await download(data, href);
+            if (downloadResults === OK) {
+              productMediaFilesMap.set(href, { fromData: data, fromHref: href });
+            }
+          }
+        }
+      }
+    }
+  }
+  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  for (const productMediaFile of productMediaFilesMap.values()) {
+    await write(mediaFileDesc, `${JSON.stringify(productMediaFile)}\n`);
+  }
+  await close(mediaFileDesc);
+
+  return count;
 }
 
 // TODO: export function exportPublishedProduct(): Promise<any>
@@ -2267,7 +2528,33 @@ export async function exportAssetFamilyAssets(assetFamilyCode: string): Promise<
   return OK;
 }
 
-// TODO: export function exportAssetFamilyMediaFiles(): Promise<any>
+// TODO: export function exportMediaFiles(): Promise<any>
+export async function exportMediaFiles(code: string = ''): Promise<any> {
+  const methodName: string = 'exportMediaFiles';
+  logger.info({ moduleName, methodName }, 'Starting...');
+
+  let mediaFiles: any[] = [];
+  try {
+    mediaFiles = await get(apiUrlProductMediaFiles(code));
+    logger.debug({ moduleName, methodName, mediaFiles });
+  } catch (err) {
+    logger.info({ moduleName, methodName, err });
+    return err;
+  }
+  if (mediaFiles !== null &&
+      typeof mediaFiles[Symbol.iterator] === 'function') {
+    const fileName: string = path.join(exportPath, filenameMediaFiles);
+    const fileDesc: number = await open(fileName, 'a');
+    for (const mediaFile of mediaFiles) {
+//      if (!(mediaFile.delete_asset_family_code)) {
+//        mediaFile.delete_asset_family_code = assetFamilyCode;
+//      }
+      await write(fileDesc, Buffer.from(JSON.stringify(mediaFile) + '\n'));
+    }
+    await close(fileDesc);
+  }
+  return OK;
+}
 
 // TODO: PAM exports
 export async function exportAssets(): Promise<any> {
@@ -2375,7 +2662,11 @@ export async function importAttributes(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const attributes: Attribute[] = JSON.parse(`[ ${buffer} ]`);
+    const attributes: any[] = JSON.parse(`[ ${buffer} ]`);
+    // pim 6 introduced property group_labels, which doesn't exist in the pim, so delete it.
+    for (const attribute of attributes) {
+      delete attribute.group_labels;
+    }
     const results = await patchVndAkeneoCollection(apiUrlAttributes(), attributes);
     logger.info({ moduleName, methodName, results });
   }
@@ -2391,7 +2682,11 @@ export async function importAttributeGroups(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const attributeGroups: Attribute[] = JSON.parse(`[ ${buffer} ]`);
+    const attributeGroups: AttributeGroup[] = JSON.parse(`[ ${buffer} ]`);
+    // attribute groups point to attributes, and attributes point to attribute groups, so let's unlink attribute groups.
+    for (const attributeGroup of attributeGroups) {
+      attributeGroup.attributes = [];
+    }
     const results = await patchVndAkeneoCollection(apiUrlAttributeGroups(), attributeGroups);
     logger.info({ moduleName, methodName, results });
   }
@@ -2408,6 +2703,12 @@ export async function importAttributeOptions(): Promise<any> {
   await close(fileDesc);
   if (buffer.length > 0) {
     const attributeOptions: AttributeOption[] = JSON.parse(`[ ${buffer} ]`);
+    attributeOptions.sort((a: any, b: any) => {
+      return a.attribute < b.attribute ? -1 :
+             a.attribute > b.attribute ? 1 :
+             a.code < b.code ? -1 :
+             a.code > b.code ? 1 : 0;
+    });
     if (attributeOptions.length > 0 &&
         attributeOptions[0].attribute) {
       let attributeCode: string = attributeOptions[0].attribute || '';
@@ -2424,6 +2725,10 @@ export async function importAttributeOptions(): Promise<any> {
         const attributeOption: any = attributeOptions[i];
         attributeCodeAttributeOptions.push(attributeOption);
       }
+      if (attributeCodeAttributeOptions.length > 0) {
+        const results = await patchVndAkeneoCollection(apiUrlAttributeOptions(attributeCode), attributeCodeAttributeOptions);
+        logger.info({ moduleName, methodName, results });
+      }
     }
   }
   return OK;
@@ -2438,7 +2743,11 @@ export async function importCategories(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const categories: Category[] = JSON.parse(`[ ${buffer} ]`);
+    const categories: any[] = JSON.parse(`[ ${buffer} ]`);
+    // pim 6 added property updated, but it doesn't exist, so delete it.
+    for (const category of categories) {
+      delete category.updated;
+    }
     const results = await patchVndAkeneoCollection(apiUrlCategories(), categories);
     logger.info({ moduleName, methodName, results });
   }
@@ -2496,6 +2805,12 @@ export async function importFamilyVariants(): Promise<any> {
   await close(fileDesc);
   if (buffer.length > 0) {
     const familyVariants: FamilyVariant[] = JSON.parse(`[ ${buffer} ]`);
+    familyVariants.sort((a: any, b: any) => {
+      return a.family < b.family ? -1 :
+             a.family > b.family ? 1 :
+             a.code < b.code ? -1 :
+             a.code > b.code ? 1 : 0;
+    });
     if (familyVariants.length > 0 &&
         familyVariants[0].family) {
       let familyCode: string = familyVariants[0].family || '';
@@ -2511,6 +2826,10 @@ export async function importFamilyVariants(): Promise<any> {
         const familyVariant: any = familyVariants[i];
         delete familyVariant.family;
         familyCodeFamilyVariants.push(familyVariant);
+      }
+      if (familyCodeFamilyVariants.length > 0) {
+        const results = await patchVndAkeneoCollection(apiUrlFamilyVariants(familyCode), familyCodeFamilyVariants);
+        logger.info({ moduleName, methodName, results });
       }
     }
   }
@@ -2539,15 +2858,50 @@ export async function importProducts(): Promise<any> {
   const methodName: string = 'importProducts';
   logger.info({ moduleName, methodName }, 'Starting...');
 
+  const mediaFilesMap: Map<string, any> = new Map();
+  let stats: fs.Stats | null = null;
+  try {
+    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
+    await load(path.join(exportPath, 'productMediaFiles.vac'), mediaFilesMap, 'fromHref');
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      logger.info({ moduleName, methodName, error: inspect(err) }, `Error stating: ${path.join(exportPath, 'productMediaFiles.vac')}`);
+    }
+  }
+
+  const productMediaFilesSet: Set<any> = new Set();
+
   const fileName: string = path.join(exportPath, filenameProducts);
-  const limit: number = promiseLimit;
   const productsMap: Map<string, any> = new Map();
   await load(fileName, productsMap, 'identifier');
   const identifiers: any[] = Array.from(productsMap.keys()).sort();
+  const limit: number = promiseLimit;
   let count: number = 0;
   let products: any[] = [];
   for (const identifier of identifiers) {
-    const product: Product = productsMap.get(identifier);
+    const product: any = productsMap.get(identifier);
+    const valueAttributes: any = product.values ? product.values : {};
+    for (const valueAttribute in valueAttributes) {
+      let found: number = 0;
+      for (const valueObject of valueAttributes[valueAttribute]) {
+        if (valueObject.data &&
+            valueObject._links &&
+            valueObject._links.download &&
+            valueObject._links.download.href) {
+          ++found;
+          const attribute: string = valueAttribute;
+          const locale: string | null = valueObject.locale || null;
+          const scope: string | null = valueObject.scope || null;
+          const data: string = valueObject.data || '';
+          const href: string = valueObject._links.download.href || '';
+          // '{"identifier":"product_identifier", "attribute":"attribute_code", "scope":"channel_code","locale":"locale_code"}'
+          productMediaFilesSet.add({ identifier, attribute, scope, locale, data, href });
+        }
+      }
+      if (found) {
+        delete product.values[valueAttribute];
+      }
+    }
     if (product) {
       if (process.env.AKENEO_DELETE_MODELS &&
           product.parent) {
@@ -2587,23 +2941,210 @@ export async function importProducts(): Promise<any> {
     logger.info({ moduleName, methodName, count });
   }
 
-  return OK;
+  logger.info({ moduleName, methodName }, 'Importing linked images...');
+
+  for (const productMediaFile of productMediaFilesSet.values()) {
+    const mediaFile: any = mediaFilesMap.get(productMediaFile.href) || null;
+    if (mediaFile) {
+      if (!(mediaFile.toHref)) {
+        // upload and save the location
+        const pathAndFile: any = splitMediaFileData(productMediaFile.data);
+        const mediaFilePath: string = path.join(pathAndFile.path, pathAndFile.name);
+        delete productMediaFile.data;
+        delete productMediaFile.href;
+        const stream: fs.ReadStream | null = fs.createReadStream(path.join(exportPath, mediaFilePath));
+        if (stream) {
+          logger.info({ moduleName, methodName, mediaFilePath });
+          let uploadResults: any = null;
+          try {
+            uploadResults = await postMultipartFormData(apiUrlProductMediaFiles(), stream, productMediaFile);
+            const location: string = uploadResults;
+            mediaFile.toHref = location;
+            mediaFile.toData = location.slice(location.indexOf(apiUrlProductMediaFiles()) + apiUrlProductMediaFiles().length, location.length);
+          } catch (err) {
+            logger.error({ moduleName, methodName, error: inspect(err) }, 'Error uploading ${mediaFilePath}');
+          }
+        }
+      } else {
+        // re-use the previously uploaded location
+        let patchResults: any = null;
+        try {
+          const patch: any = {};
+          patch.identifier = productMediaFile.identifier;
+          patch.values = {};
+          patch.values[productMediaFile.attribute] =
+          [ { 
+            locale: productMediaFile.locale,
+            scope: productMediaFile.scope,
+            data: mediaFile.toData
+          } ];
+          patchResults = patchVndAkeneoCollection(apiUrlProducts(), patch);
+        } catch (err) {
+          logger.error({ moduleName, methodName, error: inspect(err) }, 'Error patching ${mediaFilePath}');
+        }
+      }
+    }
+  }
+
+  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  for (const mediaFile of mediaFilesMap.values()) {
+    await write(mediaFileDesc, `${JSON.stringify(mediaFile)}\n`);
+  }
+  await close(mediaFileDesc);
+
+  return count;
 }
 
 export async function importProductModels(): Promise<any> {
   const methodName: string = 'importProductModels';
   logger.info({ moduleName, methodName }, 'Starting...');
 
-  const fileName: string = path.join(exportPath, filenameProductModels);
-  const fileDesc: number = await open(fileName, 'r');
-  const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
-  await close(fileDesc);
-  if (buffer.length > 0) {
-    const productModels: ProductModel[] = JSON.parse(`[ ${buffer} ]`);
-    const results = await patchVndAkeneoCollection(apiUrlProductModels(), productModels);
-    logger.info({ moduleName, methodName, results });
+  const mediaFilesMap: Map<string, any> = new Map();
+  let stats: fs.Stats | null = null;
+  try {
+    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
+    await load(path.join(exportPath, 'productMediaFiles.vac'), mediaFilesMap, 'fromHref');
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      logger.info({ moduleName, methodName, error: inspect(err) }, `Error stating: ${path.join(exportPath, 'productMediaFiles.vac')}`);
+    }
   }
-  return OK;
+
+  const fileName: string = path.join(exportPath, filenameProductModels);
+  const productModelsMap: Map<string, any> = new Map();
+  await load(fileName, productModelsMap, 'code');
+  let count: number = 0;
+  let productModels: any[] = [];
+  const limit: number = promiseLimit;
+
+  const productModelMediaFilesSet: Set<any> = new Set();
+
+  // sort for precedence
+  const keys: any[] = [];
+  for (const productModel of productModelsMap.values()) {
+    const code: string = productModel.code || '';
+    const parent: string = productModel.parent || '';
+    keys.push({ parent, code });
+  }
+  keys.sort((a: any, b: any) => {
+    return a.parent < b.parent ? -1 :
+           a.parent > b.parent ? 1 :
+           a.code < b.code ? -1 :
+           a.code > b.code ? 1 : 0;
+  });
+  for (const key of keys) {
+    const productModel: any = productModelsMap.get(key.code);
+    const code: string = productModel.code ? productModel.code : '';
+    const valueAttributes: any = productModel.values ? productModel.values : {};
+    for (const valueAttribute in valueAttributes) {
+      let found: number = 0;
+      for (const valueObject of valueAttributes[valueAttribute]) {
+        if (valueObject.data &&
+            valueObject._links &&
+            valueObject._links.download &&
+            valueObject._links.download.href) {
+          ++found;
+          const attribute: string = valueAttribute;
+          const locale: string | null = valueObject.locale || null;
+          const scope: string | null = valueObject.scope || null;
+          const data: string = valueObject.data || '';
+          const href: string = valueObject._links.download.href || '';
+          // '{"code":"product_model_code", "attribute":"attribute_code", "scope":"channel_code","locale":"locale_code"}'
+          productModelMediaFilesSet.add({ code, attribute, scope, locale, data, href });
+        }
+      }
+      if (found) {
+        delete productModel.values[valueAttribute];
+      }
+    }
+  
+    productModels.push(productModel);
+    if (productModels.length % 1600 === 0) {
+      const productModelproductModels: any[] = [];
+      let i: number = 0;
+      for (i = 0; i < limit; i++) {
+        productModelproductModels[i] = [];
+      }
+      
+      i = 0;
+      for (const productModel of productModels) {
+        productModelproductModels[i].push(productModel);
+        if (i < limit - 1) {
+          i++;
+        } else {
+          i = 0;
+        }
+        ++count;
+      }
+      
+      const promises: any[] = [];
+      for (i = 0; i < limit; i++) {
+        promises[i] = patchVndAkeneoCollection(apiUrlProductModels(), productModelproductModels[i]);
+      }
+      const results: any = await Promise.all(promises);
+      productModels = [];
+      logger.info({ moduleName, methodName, count });
+    }
+  }
+
+  if (productModels.length > 0) {
+    const results: any = await patchVndAkeneoCollection(apiUrlProductModels(), productModels);
+  }
+
+  logger.info({ moduleName, methodName }, 'Importing linked images...');
+
+  for (const productModelMediaFile of productModelMediaFilesSet.values()) {
+    const mediaFile: any = mediaFilesMap.get(productModelMediaFile.href) || null;
+    if (mediaFile) {
+      if (!(mediaFile.toHref)) {
+        // upload and save the location
+        const pathAndFile: any = splitMediaFileData(productModelMediaFile.data);
+        const mediaFilePath: string = path.join(pathAndFile.path, pathAndFile.name);
+        delete productModelMediaFile.data;
+        delete productModelMediaFile.href;
+        const stream: fs.ReadStream | null = fs.createReadStream(path.join(exportPath, mediaFilePath));
+        if (stream) {
+          logger.info({ moduleName, methodName, mediaFilePath });
+          let uploadResults: any = null;
+          try {
+            uploadResults = await postMultipartFormData(apiUrlProductMediaFiles(), stream, productModelMediaFile);
+            //console.log(inspect(uploadResults));
+            //if (methodName !== 'junk') process.exit(99);
+            const location: string = uploadResults;
+            mediaFile.toHref = location;
+            mediaFile.toData = location.slice(location.indexOf(apiUrlProductMediaFiles()) + apiUrlProductMediaFiles().length, location.length);
+          } catch (err) {
+            logger.error({ moduleName, methodName, error: inspect(err) }, 'Error uploading ${mediaFilePath}');
+          }
+        }
+      } else {
+        // re-use the previously uploaded location
+        let patchResults: any = null;
+        try {
+          const patch: any = {};
+          patch.code = productModelMediaFile.code;
+          patch.values = {};
+          patch.values[productModelMediaFile.attribute] =
+          [ { 
+            locale: productModelMediaFile.locale,
+            scope: productModelMediaFile.scope,
+            data: mediaFile.toData
+          } ];
+          patchResults = patchVndAkeneoCollection(apiUrlProductModels(), patch);
+        } catch (err) {
+          logger.error({ moduleName, methodName, error: inspect(err) }, 'Error patching ${mediaFilePath}');
+        }
+      }
+    }
+  }
+
+  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  for (const mediaFile of mediaFilesMap.values()) {
+    await write(mediaFileDesc, `${JSON.stringify(mediaFile)}\n`);
+  }
+  await close(mediaFileDesc);
+
+  return count;
 }
 
 /******************** R E F E R E N C E   E N T I T I E S ********************/
@@ -2983,6 +3524,7 @@ async function main(...args: string[]): Promise<any> {
   // TODO: results = (tasks.exportReferenceEntityMediaFile) ? await exportReferenceEntityMediaFile() : [];
   results = (tasks.exportAssets) ? await exportAssets() : [];
   results = (tasks.exportAssetCategories) ? await exportAssetCategories() : [];
+  results = (tasks.exportMediaFiles) ? await exportMediaFiles() : [];
   // TODO: results = (tasks.exportAssetReferenceFiles) ? await exportAssetReferenceFiles() : [];
   results = (tasks.exportAssetTags) ? await exportAssetTags() : [];
   // TODO: results = (tasks.exportAssetVariationFiles) ? await exportAssetVariationFiles() : [];

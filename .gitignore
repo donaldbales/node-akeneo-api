@@ -1,5 +1,9 @@
 # development files
 
+.DS_Store
+Terminal Saved Output*.txt
+junk
+sync
 202*.txt
 data/
 notes.txt
