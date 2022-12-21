@@ -240,8 +240,6 @@ export function baseProtocol(): string {
   return baseUrl.slice(0, baseUrl.indexOf(':'));
 }
 
-const FIVE_MINUTES: number = 5 * 60 * 1000;
-
 const OK: any = { status: 'OK' };
 
 export const AKENEO_CATEGORIES: string = 'categories';
@@ -340,12 +338,12 @@ export let filenameAssetVariationFiles: string = 'assetVariationFiles.vac';
 // end of v3
 
 // Helper functions
-
 export function close(fd: number): Promise<boolean> {
+  const methodName: string = 'close';
   return new Promise((resolve: any, reject: any) => {
     fs.close(fd, (err) => {
       if (err) {
-        console.error(inspect(err));
+        logger.error({ moduleName, methodName, error: inspect(err) });
         return reject(err);
       } else {
         return resolve(true);
@@ -355,10 +353,11 @@ export function close(fd: number): Promise<boolean> {
 }
 
 export function mkdir(path: string): Promise<boolean> {
+  const methodName: string = 'mkdir';
   return new Promise((resolve: any, reject: any) => {
     fs.mkdir(path, { recursive: true }, (err) => {
       if (err) {
-        console.error(inspect(err));
+        logger.error({ moduleName, methodName, error: inspect(err) });
         return reject(err);
       } else {
         return resolve(true)
@@ -368,10 +367,11 @@ export function mkdir(path: string): Promise<boolean> {
 }
 
 export function open(path: string, flags: string = 'r'): Promise<number> {
+  const methodName: string = 'open';
   return new Promise((resolve: any, reject: any) => {
     fs.open(path, flags, (err, fd) => {
       if (err) {
-        console.error(inspect(err));
+        logger.error({ moduleName, methodName, error: inspect(err) });
         return reject(err);
       } else {
         return resolve(fd);
@@ -380,14 +380,28 @@ export function open(path: string, flags: string = 'r'): Promise<number> {
   });
 }
 
-export const read: any = util.promisify(fs.readFile);
+//export const read: any = util.promisify(fs.readFile);
+export function read(fileDesc: number): Promise<Buffer> {
+  const methodName: string = 'read';
+  return new Promise((resolve: any, reject: any) => {
+    fs.readFile(fileDesc, (err, data) => {
+      if (err) {
+        logger.error({ moduleName, methodName, error: inspect(err) });
+        return reject(err);
+      } else {
+        return resolve(data);
+      }
+    });
+  });
+}
 
 export function stat(path: string): Promise<fs.Stats> {
+  const methodName: string = 'stat';
   return new Promise((resolve:any, reject: any) => {
     fs.stat(path, (err, stats) => {
       if (err) {
         if (err.code !== 'ENOENT') {
-          console.error(inspect(err));
+          logger.error({ moduleName, methodName, error: inspect(err) });
           return null;
         } else {
           reject(err);
@@ -399,13 +413,27 @@ export function stat(path: string): Promise<fs.Stats> {
   });
 }
 
-export const unlink: any = util.promisify(fs.unlink);
+//export const unlink: any = util.promisify(fs.unlink);
+export function unlink(path: string): Promise<boolean> {
+  const methodName: string = 'unlink';
+  return new Promise((resolve: any, reject: any) => {
+    fs.unlink(path, (err) => {
+      if (err) {
+        logger.error({ moduleName, methodName, error: inspect(err) });
+        return reject(err);
+      } else {
+        return resolve(true)
+      }
+    });
+  });
+}
 
 export function write(fd: number, data: Buffer | string): Promise<number> {
+  const methodName: string = 'write';
   return new Promise((resolve: any, reject: any) => {
     fs.write(fd, data, (err, written, bufferOrString) => {
       if (err) {
-        console.error(inspect(err));
+        logger.error({ moduleName, methodName, error: inspect(err) });
         return reject(err);
       } else {
         return resolve(written);
@@ -943,6 +971,7 @@ export async function download(data: string, url: string): Promise<any> {
   return result;
 }
 
+const FIVE_MINUTES: number = 5 * 60 * 1000;
 let getTokenCount: number = 0;
 let tokenResponse: any;
 let tokenExpiresAt: number = 0;
@@ -1702,7 +1731,6 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
       port,
       protocol
     };
-    //console.log(options);
     const form: any = new FormData();
     form.append('file', stream);
     if (properties.identifier) {
@@ -1717,7 +1745,6 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
         logger.error({ moduleName, methodName, apiUrl: apiUrl, error }, `Error`);
         reject(err);
       } else {
-        //console.log(inspect(response));
         const statusCode: number | undefined = response.statusCode;
         const statusMessage: string | undefined = response.statusMessage;
         logger.info({ moduleName, methodName, apiUrl: apiUrl, statusCode });
@@ -1732,7 +1759,6 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
           }
         }
         const headers = response.headers;
-        //console.log(headers);
         if (((process.env.LOG_LEVEL as string) || 'info') === 'debug') {
           const fileDescriptor: number = await open(path.join(exportPath, 'postMultipartFormDataReponse.txt'), 'a');
           await write(fileDescriptor, inspect(response.headers));
@@ -3108,8 +3134,6 @@ export async function importProductModels(): Promise<any> {
           let uploadResults: any = null;
           try {
             uploadResults = await postMultipartFormData(apiUrlProductMediaFiles(), stream, productModelMediaFile);
-            //console.log(inspect(uploadResults));
-            //if (methodName !== 'junk') process.exit(99);
             const location: string = uploadResults;
             mediaFile.toHref = location;
             mediaFile.toData = location.slice(location.indexOf(apiUrlProductMediaFiles()) + apiUrlProductMediaFiles().length, location.length);

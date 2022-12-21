@@ -1,11 +1,8 @@
 #!/bin/bash
 
+export LOG_LEVEL=info
 export AKENEO_EXPORT_PATH=data
 mkdir -p $AKENEO_EXPORT_PATH
-
-#touch ${AKENEO_EXPORT_PATH}/referenceEntityAttributeOptions.vac
-
-export LOG_LEVEL=info
 
 #
 # From
