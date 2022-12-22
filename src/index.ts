@@ -226,18 +226,37 @@ export function load(filename: string, map: Map<string, any>, key: string): Prom
   });  
 } 
 
-export let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
-export let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
-export let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
-export let password: string = (process.env.AKENEO_PASSWORD as string) || '';
-export let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
-export let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
-export let secret: string = (process.env.AKENEO_SECRET as string) || '';
-export let tokenUrl: string = (process.env.AKENEO_TOKEN_URL as string) || '/api/oauth/v1/token';
-export let username: string = (process.env.AKENEO_USERNAME as string) || '';
+let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
+let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
+let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
+let password: string = (process.env.AKENEO_PASSWORD as string) || '';
+let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
+let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
+let secret: string = (process.env.AKENEO_SECRET as string) || '';
+let tokenUrl: string = (process.env.AKENEO_TOKEN_URL as string) || '/api/oauth/v1/token';
+let username: string = (process.env.AKENEO_USERNAME as string) || '';
 
 export function baseProtocol(): string {
   return baseUrl.slice(0, baseUrl.indexOf(':'));
+}
+
+export function setBaseUrl(value: string) {
+  baseUrl = value;
+}
+export function setClientId(value: string) {
+  clientId = value;
+}
+export function setExportPath(value: string) {
+  exportPath = value;
+}
+export function setPassword(value: string) {
+  password = value;
+}
+export function setSecret(value: string) {
+  secret = value;
+}
+export function setUsername(value: string) {
+  username = value;
 }
 
 const OK: any = { status: 'OK' };
