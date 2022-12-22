@@ -419,7 +419,7 @@ export function stat(path: string): Promise<fs.Stats> {
       if (err) {
         if (err.code !== 'ENOENT') {
           logger.error({ moduleName, methodName, error: inspect(err) });
-          return null;
+          resolve(null);
         } else {
           reject(err);
         }
