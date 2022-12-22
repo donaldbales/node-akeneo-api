@@ -1,6 +1,6 @@
 {
   "name": "node-akeneo-api",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "description": "A Node module that supports the use of Akeneo PIM's Web API",
   "main": "src/index.js",
   "scripts": {
@@ -9,15 +9,15 @@
   "author": "Donald J. Bales",
   "license": "Apache-2.0",
   "dependencies": {
+    "@types/bunyan": "^1.8.6",
+    "@types/minimist": "^1.2.2",
+    "@types/node": "10.14.17",
     "bunyan": "^1.8.12",
     "change-case": "^4.1.1",
     "form-data": "^3.0.0",
     "minimist": "^1.2.6"
   },
   "devDependencies": {
-    "@types/bunyan": "^1.8.6",
-    "@types/minimist": "^1.2.2",
-    "@types/node": "10.14.17",
     "tslint": "^5.11.0",
     "tslint-eslint-rules": "^5.4.0",
     "typescript": "^2.9.2"
