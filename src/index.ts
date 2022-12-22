@@ -62,7 +62,7 @@ const possibleTasks: string[] = [
   'exportFamilyVariants',
   'exportLocales',
   'exportMeasureFamilies',
-  'exportMediaFiles',
+  'exportProductMediaFiles',
   'exportProductModels',
   'exportProducts',
   'exportReferenceEntities',
@@ -2571,8 +2571,8 @@ export async function exportAssetFamilyAssets(assetFamilyCode: string): Promise<
 }
 
 // TODO: export function exportMediaFiles(): Promise<any>
-export async function exportMediaFiles(code: string = ''): Promise<any> {
-  const methodName: string = 'exportMediaFiles';
+export async function exportProductMediaFiles(code: string = ''): Promise<any> {
+  const methodName: string = 'exportProductMediaFiles';
   logger.info({ moduleName, methodName }, 'Starting...');
 
   let mediaFiles: any[] = [];
@@ -2585,7 +2585,7 @@ export async function exportMediaFiles(code: string = ''): Promise<any> {
   }
   if (mediaFiles !== null &&
       typeof mediaFiles[Symbol.iterator] === 'function') {
-    const fileName: string = path.join(exportPath, filenameMediaFiles);
+    const fileName: string = path.join(exportPath, filenameProductMediaFiles);
     const fileDesc: number = await open(fileName, 'a');
     for (const mediaFile of mediaFiles) {
 //      if (!(mediaFile.delete_asset_family_code)) {
@@ -3564,7 +3564,7 @@ async function main(...args: string[]): Promise<any> {
   // TODO: results = (tasks.exportReferenceEntityMediaFile) ? await exportReferenceEntityMediaFile() : [];
   results = (tasks.exportAssets) ? await exportAssets() : [];
   results = (tasks.exportAssetCategories) ? await exportAssetCategories() : [];
-  results = (tasks.exportMediaFiles) ? await exportMediaFiles() : [];
+  results = (tasks.exportProductMediaFiles) ? await exportProductMediaFiles() : [];
   // TODO: results = (tasks.exportAssetReferenceFiles) ? await exportAssetReferenceFiles() : [];
   results = (tasks.exportAssetTags) ? await exportAssetTags() : [];
   // TODO: results = (tasks.exportAssetVariationFiles) ? await exportAssetVariationFiles() : [];
