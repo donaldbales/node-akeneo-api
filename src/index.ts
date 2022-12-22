@@ -226,9 +226,9 @@ export function load(filename: string, map: Map<string, any>, key: string): Prom
   });  
 } 
 
-let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
+export let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
 let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
-let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
+export let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
 let password: string = (process.env.AKENEO_PASSWORD as string) || '';
 let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
 let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
