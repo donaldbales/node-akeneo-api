@@ -335,13 +335,12 @@ export let filenameLocales: string = 'locales.vac';
 export let filenameMeasureFamilies: string = 'measureFamilies.vac';
 export let filenameProducts: string = 'products.vac';
 export let filenameProductModels: string = 'productModels.vac';
+export let filenameProductMediaFiles: string = 'productMediaFiles.vac';
 
 export let filenameReferenceEntities: string = 'referenceEntities.vac';
 export let filenameReferenceEntityAttributes: string = 'referenceEntityAttributes.vac';
 export let filenameReferenceEntityAttributeOptions: string = 'referenceEntityAttributeOptions.vac';
 export let filenameReferenceEntityRecords: string = 'referenceEntityRecords.vac';
-
-export let filenameMediaFiles: string = 'mediaFiles.vac';
 
 export let filenameAssetFamilies: string = 'assetFamilies.vac';
 export let filenameAssetFamilyAttributes: string = 'assetFamilyAttributes.vac';
@@ -399,7 +398,6 @@ export function open(path: string, flags: string = 'r'): Promise<number> {
   });
 }
 
-//export const read: any = util.promisify(fs.readFile);
 export function read(fileDesc: number): Promise<Buffer> {
   const methodName: string = 'read';
   return new Promise((resolve: any, reject: any) => {
@@ -432,7 +430,6 @@ export function stat(path: string): Promise<fs.Stats> {
   });
 }
 
-//export const unlink: any = util.promisify(fs.unlink);
 export function unlink(path: string): Promise<boolean> {
   const methodName: string = 'unlink';
   return new Promise((resolve: any, reject: any) => {
@@ -2145,8 +2142,8 @@ export async function exportProducts(parameters: string = ''): Promise<any> {
   const productMediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
   try {
-    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
-    await load(path.join(exportPath, 'productMediaFiles.vac'), productMediaFilesMap, 'fromHref');
+    stats = await stat(path.join(exportPath, filenameProductMediaFiles));
+    await load(path.join(exportPath, filenameProductMediaFiles), productMediaFilesMap, 'fromHref');
   } catch (err) {
     console.error(inspect(err));
   }
@@ -2172,7 +2169,7 @@ export async function exportProducts(parameters: string = ''): Promise<any> {
       }
     }
   }
-  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  const mediaFileDesc: number = await open(path.join(exportPath, filenameProductMediaFiles), 'w');
   for (const productMediaFile of productMediaFilesMap.values()) {
     await write(mediaFileDesc, `${JSON.stringify(productMediaFile)}\n`);
   }
@@ -2214,8 +2211,8 @@ export async function exportProductModels(): Promise<any> {
   const productMediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
   try {
-    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
-    await load(path.join(exportPath, 'productMediaFiles.vac'), productMediaFilesMap, 'fromHref');
+    stats = await stat(path.join(exportPath, filenameProductMediaFiles));
+    await load(path.join(exportPath, filenameProductMediaFiles), productMediaFilesMap, 'fromHref');
   } catch (err) {
     console.error(inspect(err));
   }
@@ -2241,7 +2238,7 @@ export async function exportProductModels(): Promise<any> {
       }
     }
   }
-  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  const mediaFileDesc: number = await open(path.join(exportPath, filenameProductMediaFiles), 'w');
   for (const productMediaFile of productMediaFilesMap.values()) {
     await write(mediaFileDesc, `${JSON.stringify(productMediaFile)}\n`);
   }
@@ -2906,11 +2903,11 @@ export async function importProducts(): Promise<any> {
   const mediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
   try {
-    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
-    await load(path.join(exportPath, 'productMediaFiles.vac'), mediaFilesMap, 'fromHref');
+    stats = await stat(path.join(exportPath, filenameProductMediaFiles));
+    await load(path.join(exportPath, filenameProductMediaFiles), mediaFilesMap, 'fromHref');
   } catch (err) {
     if (err.code !== 'ENOENT') {
-      logger.info({ moduleName, methodName, error: inspect(err) }, `Error stating: ${path.join(exportPath, 'productMediaFiles.vac')}`);
+      logger.info({ moduleName, methodName, error: inspect(err) }, `Error stating: ${path.join(exportPath, filenameProductMediaFiles)}`);
     }
   }
 
@@ -3031,7 +3028,7 @@ export async function importProducts(): Promise<any> {
     }
   }
 
-  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  const mediaFileDesc: number = await open(path.join(exportPath, filenameProductMediaFiles), 'w');
   for (const mediaFile of mediaFilesMap.values()) {
     await write(mediaFileDesc, `${JSON.stringify(mediaFile)}\n`);
   }
@@ -3047,11 +3044,11 @@ export async function importProductModels(): Promise<any> {
   const mediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
   try {
-    stats = await stat(path.join(exportPath, 'productMediaFiles.vac'));
-    await load(path.join(exportPath, 'productMediaFiles.vac'), mediaFilesMap, 'fromHref');
+    stats = await stat(path.join(exportPath, filenameProductMediaFiles));
+    await load(path.join(exportPath, filenameProductMediaFiles), mediaFilesMap, 'fromHref');
   } catch (err) {
     if (err.code !== 'ENOENT') {
-      logger.info({ moduleName, methodName, error: inspect(err) }, `Error stating: ${path.join(exportPath, 'productMediaFiles.vac')}`);
+      logger.info({ moduleName, methodName, error: inspect(err) }, `Error stating: ${path.join(exportPath, filenameProductMediaFiles)}`);
     }
   }
 
@@ -3181,7 +3178,7 @@ export async function importProductModels(): Promise<any> {
     }
   }
 
-  const mediaFileDesc: number = await open(path.join(exportPath, 'productMediaFiles.vac'), 'w');
+  const mediaFileDesc: number = await open(path.join(exportPath, filenameProductMediaFiles), 'w');
   for (const mediaFile of mediaFilesMap.values()) {
     await write(mediaFileDesc, `${JSON.stringify(mediaFile)}\n`);
   }
