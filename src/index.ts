@@ -417,14 +417,28 @@ export function stat(path: string): Promise<fs.Stats> {
   return new Promise((resolve:any, reject: any) => {
     fs.stat(path, (err, stats) => {
       if (err) {
-        if (err.code !== 'ENOENT') {
-          logger.error({ moduleName, methodName, error: inspect(err) });
+        if (err.code === 'ENOENT') {
           resolve(null);
         } else {
+          logger.error({ moduleName, methodName, error: inspect(err) });
           reject(err);
         }
       } else {
         resolve(stats);
+      }
+    });
+  });
+}
+
+function symlink(target: string, path: string, type: any = 'dir'): Promise<boolean> {
+  const methodName: string = 'symlink';
+  return new Promise((resolve: any, reject: any) => {
+    fs.symlink(target, path, type, (err) => {
+      if (err) {
+        logger.error({ moduleName, methodName, error: inspect(err) });
+        reject(err);
+      } else {
+        resolve(true);
       }
     });
   });
@@ -435,8 +449,12 @@ export function unlink(path: string): Promise<boolean> {
   return new Promise((resolve: any, reject: any) => {
     fs.unlink(path, (err) => {
       if (err) {
-        logger.error({ moduleName, methodName, error: inspect(err) });
-        return reject(err);
+        if (err.code === 'ENOENT') {
+          resolve(null);
+        } else {
+          logger.error({ moduleName, methodName, error: inspect(err) });
+          reject(err);
+        }
       } else {
         return resolve(true)
       }
@@ -1763,14 +1781,16 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
       } else {
         const statusCode: number | undefined = response.statusCode;
         const statusMessage: string | undefined = response.statusMessage;
-        logger.info({ moduleName, methodName, apiUrl: apiUrl, statusCode });
-        logger.info({ moduleName, methodName, apiUrl: apiUrl, statusMessage });
+        logger.info({ moduleName, methodName, apiUrl, statusCode });
+        logger.info({ moduleName, methodName, apiUrl, statusMessage });
         if (statusCode !== 201) {
+          logger.error({ moduleName, methodName, apiUrl, stream });
+          logger.error({ moduleName, methodName, apiUrl, properties });
           const object: any = response;
           for (const property in object) {
             if (object.hasOwnProperty(property)) {
               const value: any = object[property];
-              logger.info({ moduleName, methodName, apiUrl: apiUrl, property, value });
+              logger.error({ moduleName, methodName, apiUrl: apiUrl, property, value });
             }
           }
         }
@@ -1798,7 +1818,7 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
         if (statusCode !== 201) {
           reject(`${statusCode}: ${statusMessage}`);
         } else
-        if (  assetMediaFileCode) {
+        if (assetMediaFileCode) {
           resolve(assetMediaFileCode);
         } else
         if (referenceEntitiesMediaFileCode) {
