@@ -3040,7 +3040,7 @@ export async function importProducts(): Promise<any> {
             scope: productMediaFile.scope,
             data: mediaFile.toData
           } ];
-          patchResults = patchVndAkeneoCollection(apiUrlProducts(), patch);
+          patchResults = await patchVndAkeneoCollection(apiUrlProducts(), patch);
         } catch (err) {
           logger.error({ moduleName, methodName, error: inspect(err) }, 'Error patching ${mediaFilePath}');
         }
@@ -3122,15 +3122,15 @@ export async function importProductModels(): Promise<any> {
   
     productModels.push(productModel);
     if (productModels.length % 1600 === 0) {
-      const productModelproductModels: any[] = [];
+      const productModelProductModels: any[] = [];
       let i: number = 0;
       for (i = 0; i < limit; i++) {
-        productModelproductModels[i] = [];
+        productModelProductModels[i] = [];
       }
       
       i = 0;
       for (const productModel of productModels) {
-        productModelproductModels[i].push(productModel);
+        productModelProductModels[i].push(productModel);
         if (i < limit - 1) {
           i++;
         } else {
@@ -3141,7 +3141,7 @@ export async function importProductModels(): Promise<any> {
       
       const promises: any[] = [];
       for (i = 0; i < limit; i++) {
-        promises[i] = patchVndAkeneoCollection(apiUrlProductModels(), productModelproductModels[i]);
+        promises[i] = patchVndAkeneoCollection(apiUrlProductModels(), productModelProductModels[i]);
       }
       const results: any = await Promise.all(promises);
       productModels = [];
@@ -3190,7 +3190,7 @@ export async function importProductModels(): Promise<any> {
             scope: productModelMediaFile.scope,
             data: mediaFile.toData
           } ];
-          patchResults = patchVndAkeneoCollection(apiUrlProductModels(), patch);
+          patchResults = await patchVndAkeneoCollection(apiUrlProductModels(), patch);
         } catch (err) {
           logger.error({ moduleName, methodName, error: inspect(err) }, 'Error patching ${mediaFilePath}');
         }
