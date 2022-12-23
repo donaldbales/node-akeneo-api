@@ -1786,13 +1786,13 @@ export async function postMultipartFormData(apiUrl: string, stream: fs.ReadStrea
         if (statusCode !== 201) {
           logger.error({ moduleName, methodName, apiUrl, stream });
           logger.error({ moduleName, methodName, apiUrl, properties });
-          const object: any = response;
-          for (const property in object) {
-            if (object.hasOwnProperty(property)) {
-              const value: any = object[property];
-              logger.error({ moduleName, methodName, apiUrl: apiUrl, property, value });
-            }
-          }
+          //const object: any = response;
+          //for (const property in object) {
+          //  if (object.hasOwnProperty(property)) {
+          //    const value: any = object[property];
+          //    logger.error({ moduleName, methodName, apiUrl: apiUrl, property, value });
+          //  }
+          //}
         }
         const headers = response.headers;
         if (((process.env.LOG_LEVEL as string) || 'info') === 'debug') {
