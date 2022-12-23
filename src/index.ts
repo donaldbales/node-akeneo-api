@@ -430,7 +430,7 @@ export function stat(path: string): Promise<fs.Stats> {
   });
 }
 
-function symlink(target: string, path: string, type: any = 'dir'): Promise<boolean> {
+export function symlink(target: string, path: string, type: any = 'dir'): Promise<boolean> {
   const methodName: string = 'symlink';
   return new Promise((resolve: any, reject: any) => {
     fs.symlink(target, path, type, (err) => {
