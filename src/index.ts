@@ -2954,7 +2954,7 @@ export async function importProducts(): Promise<any> {
   await load(fileName, productsMap, 'identifier');
   let count: number = 0;
   let products: any[] = [];
-  const limit: number = 4 //promiseLimit;
+  const limit: number = promiseLimit;
 
   const productMediaFilesSet: Set<any> = new Set();
 
@@ -2990,7 +2990,7 @@ export async function importProducts(): Promise<any> {
       product.parent = '';
     }
     products.push(product);
-    if (products.length % 16 === 0) {
+    if (products.length % 1600 === 0) {
       const productProducts: any[] = [];
       let i: number = 0;
       for (i = 0; i < limit; i++) {
@@ -3032,7 +3032,8 @@ export async function importProducts(): Promise<any> {
 
   for (const response of responses) {
     let message: string = response.errors ? '' : response.message;
-    if (!(message)) {
+    if (!(message) &&
+          response.errors instanceof Array) {
       for (const error of response.errors) {
         message += message ? ` ${error.message}` : error.message;
       }
@@ -3082,7 +3083,8 @@ export async function importProducts(): Promise<any> {
           logger.debug({ moduleName, methodName, code: patch.code, patchResults: inspect(patchResults) });
           for (const response of patchResults.responses) {
             let message: string = response.errors ? '' : response.message;
-            if (!(message)) {
+            if (!(message) &&
+                  response.errors instanceof Array) {
               for (const error of response.errors) {
                 message += message ? ` ${error.message}` : error.message;
               }
@@ -3127,7 +3129,7 @@ export async function importProductModels(): Promise<any> {
   await load(fileName, productModelsMap, 'code');
   let count: number = 0;
   let productModels: any[] = [];
-  const limit: number = 4; //promiseLimit;
+  const limit: number = promiseLimit;
 
   const productModelMediaFilesSet: Set<any> = new Set();
 
@@ -3171,7 +3173,7 @@ export async function importProductModels(): Promise<any> {
     }
   
     productModels.push(productModel);
-    if (productModels.length % 16 === 0) {
+    if (productModels.length % 1600 === 0) {
       const productModelProductModels: any[] = [];
       let i: number = 0;
       for (i = 0; i < limit; i++) {
@@ -3213,7 +3215,8 @@ export async function importProductModels(): Promise<any> {
 
   for (const response of responses) {
     let message: string = response.errors ? '' : response.message;
-    if (!(message)) {
+    if (!(message) &&
+          response.errors instanceof Array) {
       for (const error of response.errors) {
         message += message ? ` ${error.message}` : error.message;
       }
@@ -3263,7 +3266,8 @@ export async function importProductModels(): Promise<any> {
           logger.debug({ moduleName, methodName, code: patch.code, patchResults: inspect(patchResults) });
           for (const response of patchResults.responses) {
             let message: string = response.errors ? '' : response.message;
-            if (!(message)) {
+            if (!(message) &&
+                  response.errors instanceof Array) {
               for (const error of response.errors) {
                 message += message ? ` ${error.message}` : error.message;
               }
