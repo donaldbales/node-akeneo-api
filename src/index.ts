@@ -121,7 +121,6 @@ function argz(args: any = null): any {
   const parameter: string = localArgs.parameter ? localArgs.parameter : '';
   const result: any = { tasks: {}, parameter };
   const tasks: any[] = localArgs.tasks.split(',');
-  // console.error(tasks);
   for (const task of tasks) {
     let found: boolean = false;
     for (const possibleTask of possibleTasks) {
@@ -145,7 +144,7 @@ export function inspect(obj: any, depth: number = 5): string {
   return `${util.inspect(obj, true, depth, false)}`;
 }
 
-export function load(filename: string, map: Map<string, any>, key: string): Promise<any> {
+export function load(filename: string, map: Map<string, any>, key: any): Promise<any> {
   const methodName: string = 'load';
   logger.debug({ moduleName, methodName, filename, map, key }, `Starting`);
   
@@ -195,7 +194,15 @@ export function load(filename: string, map: Map<string, any>, key: string): Prom
           const json = data.slice(0, linefeed).trim();
           try {
             const doc = JSON.parse(json);
-            const keyValue: string = (doc[key] as string);
+            let keyValue: string = '';
+            if (key instanceof Array) {
+              for (const element of key) {
+                keyValue += doc[element];
+              }
+            } else {
+              // it's a string
+              keyValue += doc[key];
+            }
             map.set(keyValue, doc);
           } catch (err) {
             logger.error({ moduleName, methodName, filename, map, key, json, err }, `Error: failed to parse a line of the file.`);
@@ -210,7 +217,16 @@ export function load(filename: string, map: Map<string, any>, key: string): Prom
           const json = data.trim();
           if (json) {
             const doc = JSON.parse(json);
-            map.set(doc[key], doc);
+            let keyValue: string = '';
+            if (key instanceof Array) {
+              for (const element of key) {
+                keyValue += doc[element];
+              }
+            } else {
+              // it's a string
+              keyValue += doc[key];
+            }
+            map.set(keyValue, doc);
           }
         }
         logger.info({ moduleName, methodName, filename, map, key, size: map.size }, `${map.size} records loaded.`);
@@ -495,7 +511,8 @@ export function assetCode(name: string): string {
     code = code.replace(/_/g, '');
   }
   if (code.length > 255) {
-    console.error(`WARNING: asset code truncated to 255 characters: ${code.toString()}.`);
+    logger.debug({ moduleName, methodName: 'assetCode' },
+      `WARNING: asset code truncated to 255 characters: ${code.toString()}.`);
     code = code.slice(0, 255);
   }
   
@@ -521,7 +538,8 @@ export function attributeCode(name: string): string {
     code = code.replace(/_/g, '');
   }
   if (code.length > 100) {
-    console.error(`WARNING: attribute code truncated to 100 characters: ${code.toString()}.`);
+    logger.debug({ moduleName, methodName: 'attributeCode' },
+      `WARNING: attribute code truncated to 100 characters: ${code.toString()}.`);
     code = code.slice(0, 100);
   }
   
@@ -534,7 +552,8 @@ export function attributeLabel(property: string): string {
     property.slice(1, property.length - 1) :
     change.capitalCase(property);
   if (label.length > 255) {
-    console.error(`WARNING: label truncated to 255 characters: ${label}.`);
+        logger.debug({ moduleName, methodName: 'attributeLabel' },
+          `WARNING: label truncated to 255 characters: ${label}.`);
     label = label.slice(0, 255);
   }
   
@@ -560,7 +579,8 @@ export function fileCode(name: string): string {
     code = code.replace(/_/g, '');
   }
   if (code.length > 255) {
-    console.error(`WARNING: file code truncated to 250 characters: ${code.toString()}.`);
+    logger.debug({ moduleName, methodName: 'fileCode' },
+      `WARNING: file code truncated to 250 characters: ${code.toString()}.`);
     code = code.slice(0, 255);
   }
   
@@ -586,7 +606,8 @@ export function referenceEntityCode(name: string): string {
     code = code.replace(/_/g, '');
   }
   if (code.length > 255) {
-    console.error(`WARNING: reference entity code truncated to 255 characters: ${code.toString()}.`);
+    logger.debug({ moduleName, methodName: 'referenceEntityCode' },
+      `WARNING: reference entity code truncated to 255 characters: ${code.toString()}.`);
     code = code.slice(0, 255);
   }
   
@@ -612,7 +633,8 @@ export function urlCode(name: string): string {
     code = code.replace(/_/g, '');
   }
   if (code.length > 255) {
-    console.error(`WARNING: url code truncated to 255 characters: ${code.toString()}.`);
+    logger.debug({ moduleName, methodName: 'urlCode' },
+      `WARNING: url code truncated to 255 characters: ${code.toString()}.`);
     code = code.slice(0, 255);
   }
   
@@ -1466,7 +1488,7 @@ export async function get(apiUrl: string, callback: any = null): Promise<any> {
         results.push(element);
       }
     } else {
-      console.error(inspect(result));
+      logger.debug({ moduleName, methodName, result }, `Error: unsupported data structure.`);
       process.exit(99);
     }
 
@@ -2160,12 +2182,9 @@ export async function exportProducts(parameters: string = ''): Promise<any> {
   logger.info({ moduleName, methodName }, 'Exporting linked images...');
 
   const productMediaFilesMap: Map<string, any> = new Map();
-  let stats: fs.Stats | null = null;
-  try {
-    stats = await stat(path.join(exportPath, filenameProductMediaFiles));
+  let stats: fs.Stats | null = await stat(path.join(exportPath, filenameProductMediaFiles));
+  if (stats) {
     await load(path.join(exportPath, filenameProductMediaFiles), productMediaFilesMap, 'fromHref');
-  } catch (err) {
-    console.error(inspect(err));
   }
   const productsMap: Map<string, any> = new Map();
   await load(fileName, productsMap, 'identifier');
@@ -2229,12 +2248,9 @@ export async function exportProductModels(): Promise<any> {
   logger.info({ moduleName, methodName }, 'Exporting linked images...');
 
   const productMediaFilesMap: Map<string, any> = new Map();
-  let stats: fs.Stats | null = null;
-  try {
-    stats = await stat(path.join(exportPath, filenameProductMediaFiles));
+  let stats: fs.Stats | null = await stat(path.join(exportPath, filenameProductMediaFiles));
+  if (stats) {
     await load(path.join(exportPath, filenameProductMediaFiles), productMediaFilesMap, 'fromHref');
-  } catch (err) {
-    console.error(inspect(err));
   }
   const productModelsMap: Map<string, any> = new Map();
   await load(fileName, productModelsMap, 'code');
@@ -2920,6 +2936,8 @@ export async function importProducts(): Promise<any> {
   const methodName: string = 'importProducts';
   logger.info({ moduleName, methodName }, 'Starting...');
 
+  const responses: any[] = [];
+
   const mediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
   try {
@@ -2931,15 +2949,17 @@ export async function importProducts(): Promise<any> {
     }
   }
 
-  const productMediaFilesSet: Set<any> = new Set();
-
   const fileName: string = path.join(exportPath, filenameProducts);
   const productsMap: Map<string, any> = new Map();
   await load(fileName, productsMap, 'identifier');
-  const identifiers: any[] = Array.from(productsMap.keys()).sort();
-  const limit: number = promiseLimit;
   let count: number = 0;
   let products: any[] = [];
+  const limit: number = 4 //promiseLimit;
+
+  const productMediaFilesSet: Set<any> = new Set();
+
+  const identifiers: any[] = Array.from(productsMap.keys()).sort();
+
   for (const identifier of identifiers) {
     const product: any = productsMap.get(identifier);
     const valueAttributes: any = product.values ? product.values : {};
@@ -2964,43 +2984,60 @@ export async function importProducts(): Promise<any> {
         delete product.values[valueAttribute];
       }
     }
-    if (product) {
-      if (process.env.AKENEO_DELETE_MODELS &&
-          product.parent) {
-        product.parent = '';
+
+    if (process.env.AKENEO_DELETE_MODELS &&
+        product.parent) {
+      product.parent = '';
+    }
+    products.push(product);
+    if (products.length % 16 === 0) {
+      const productProducts: any[] = [];
+      let i: number = 0;
+      for (i = 0; i < limit; i++) {
+        productProducts[i] = [];
       }
-      products.push(product);
-      if (products.length % 1600 === 0) {
-        const productProducts: any[] = [];
-        let i: number = 0;
-        for (i = 0; i < limit; i++) {
-          productProducts[i] = [];
+      
+      i = 0;
+      for (const product of products) {
+        productProducts[i].push(product);
+        if (i < limit - 1) {
+          i++;
+        } else {
+          i = 0;
         }
-        
-        i = 0;
-        for (const product of products) {
-          productProducts[i].push(product);
-          if (i < limit - 1) {
-            i++;
-          } else {
-            i = 0;
-          }
-          ++count;
-        }
-        
-        const promises: any[] = [];
-        for (i = 0; i < limit; i++) {
-          promises[i] = patchVndAkeneoCollection(apiUrlProducts(), productProducts[i]);
-        }
-        const results = await Promise.all(promises);
-        products = [];
-        logger.info({ moduleName, methodName, count });
+        ++count;
       }
+      
+      const promises: any[] = [];
+      for (i = 0; i < limit; i++) {
+        promises[i] = patchVndAkeneoCollection(apiUrlProducts(), productProducts[i]);
+      }
+      const results: any = await Promise.all(promises);
+      for (const result of results) {
+        for (const response of result.responses) {
+          responses.push(response);
+        }
+      }
+      products = [];
+      logger.info({ moduleName, methodName, count });
     }
   }
+
   if (products.length > 0) {
-    const results = await patchVndAkeneoCollection(apiUrlProducts(), products);
-    logger.info({ moduleName, methodName, count });
+    const result: any = await patchVndAkeneoCollection(apiUrlProducts(), products);
+    for (const response of result.responses) {
+      responses.push(response);
+    }
+  }
+
+  for (const response of responses) {
+    let message: string = response.errors ? '' : response.message;
+    if (!(message)) {
+      for (const error of response.errors) {
+        message += message ? ` ${error.message}` : error.message;
+      }
+    }
+    logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
   }
 
   logger.info({ moduleName, methodName }, 'Importing linked images...');
@@ -3020,11 +3057,12 @@ export async function importProducts(): Promise<any> {
           let uploadResults: any = null;
           try {
             uploadResults = await postMultipartFormData(apiUrlProductMediaFiles(), stream, productMediaFile);
+            logger.info({ moduleName, methodName, code: productMediaFile.code, uploadResults: inspect(uploadResults) });
             const location: string = uploadResults;
             mediaFile.toHref = location;
             mediaFile.toData = location.slice(location.indexOf(apiUrlProductMediaFiles()) + apiUrlProductMediaFiles().length, location.length);
           } catch (err) {
-            logger.error({ moduleName, methodName, error: inspect(err) }, 'Error uploading ${mediaFilePath}');
+            logger.error({ moduleName, methodName, error: inspect(err) }, `Error uploading ${mediaFilePath}`);
           }
         }
       } else {
@@ -3040,9 +3078,19 @@ export async function importProducts(): Promise<any> {
             scope: productMediaFile.scope,
             data: mediaFile.toData
           } ];
-          patchResults = await patchVndAkeneoCollection(apiUrlProducts(), patch);
+          patchResults = await patchVndAkeneoCollection(apiUrlProducts(), [ patch ]);
+          logger.debug({ moduleName, methodName, code: patch.code, patchResults: inspect(patchResults) });
+          for (const response of patchResults.responses) {
+            let message: string = response.errors ? '' : response.message;
+            if (!(message)) {
+              for (const error of response.errors) {
+                message += message ? ` ${error.message}` : error.message;
+              }
+            }
+            logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+          }
         } catch (err) {
-          logger.error({ moduleName, methodName, error: inspect(err) }, 'Error patching ${mediaFilePath}');
+          logger.error({ moduleName, methodName, error: inspect(err) }, `Error patching ${mediaFile}`);
         }
       }
     }
@@ -3061,6 +3109,8 @@ export async function importProductModels(): Promise<any> {
   const methodName: string = 'importProductModels';
   logger.info({ moduleName, methodName }, 'Starting...');
 
+  const responses: any[] = [];
+
   const mediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
   try {
@@ -3077,7 +3127,7 @@ export async function importProductModels(): Promise<any> {
   await load(fileName, productModelsMap, 'code');
   let count: number = 0;
   let productModels: any[] = [];
-  const limit: number = promiseLimit;
+  const limit: number = 4; //promiseLimit;
 
   const productModelMediaFilesSet: Set<any> = new Set();
 
@@ -3121,7 +3171,7 @@ export async function importProductModels(): Promise<any> {
     }
   
     productModels.push(productModel);
-    if (productModels.length % 1600 === 0) {
+    if (productModels.length % 16 === 0) {
       const productModelProductModels: any[] = [];
       let i: number = 0;
       for (i = 0; i < limit; i++) {
@@ -3144,13 +3194,31 @@ export async function importProductModels(): Promise<any> {
         promises[i] = patchVndAkeneoCollection(apiUrlProductModels(), productModelProductModels[i]);
       }
       const results: any = await Promise.all(promises);
+      for (const result of results) {
+        for (const response of result.responses) {
+          responses.push(response);
+        }
+      }
       productModels = [];
       logger.info({ moduleName, methodName, count });
     }
   }
 
   if (productModels.length > 0) {
-    const results: any = await patchVndAkeneoCollection(apiUrlProductModels(), productModels);
+    const result: any = await patchVndAkeneoCollection(apiUrlProductModels(), productModels);
+    for (const response of result.responses) {
+      responses.push(response);
+    }
+  }
+
+  for (const response of responses) {
+    let message: string = response.errors ? '' : response.message;
+    if (!(message)) {
+      for (const error of response.errors) {
+        message += message ? ` ${error.message}` : error.message;
+      }
+    }
+    logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
   }
 
   logger.info({ moduleName, methodName }, 'Importing linked images...');
@@ -3170,11 +3238,12 @@ export async function importProductModels(): Promise<any> {
           let uploadResults: any = null;
           try {
             uploadResults = await postMultipartFormData(apiUrlProductMediaFiles(), stream, productModelMediaFile);
+            logger.info({ moduleName, methodName, code: productModelMediaFile.code, uploadResults: inspect(uploadResults) });
             const location: string = uploadResults;
             mediaFile.toHref = location;
             mediaFile.toData = location.slice(location.indexOf(apiUrlProductMediaFiles()) + apiUrlProductMediaFiles().length, location.length);
           } catch (err) {
-            logger.error({ moduleName, methodName, error: inspect(err) }, 'Error uploading ${mediaFilePath}');
+            logger.error({ moduleName, methodName, error: inspect(err) }, `Error uploading ${mediaFilePath}`);
           }
         }
       } else {
@@ -3190,9 +3259,19 @@ export async function importProductModels(): Promise<any> {
             scope: productModelMediaFile.scope,
             data: mediaFile.toData
           } ];
-          patchResults = await patchVndAkeneoCollection(apiUrlProductModels(), patch);
+          patchResults = await patchVndAkeneoCollection(apiUrlProductModels(), [ patch ]);
+          logger.debug({ moduleName, methodName, code: patch.code, patchResults: inspect(patchResults) });
+          for (const response of patchResults.responses) {
+            let message: string = response.errors ? '' : response.message;
+            if (!(message)) {
+              for (const error of response.errors) {
+                message += message ? ` ${error.message}` : error.message;
+              }
+            }
+            logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+          }
         } catch (err) {
-          logger.error({ moduleName, methodName, error: inspect(err) }, 'Error patching ${mediaFilePath}');
+          logger.error({ moduleName, methodName, error: inspect(err) }, `Error patching ${mediaFile}`);
         }
       }
     }

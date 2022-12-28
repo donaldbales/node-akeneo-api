@@ -4,11 +4,13 @@ A NodeJS module that supports the use of Akeneo PIM's Web API
 
 ## Release
 
-This module supports Akeneo PIM Web API for Akeneo PIM 3.2 through 6.0+. It has been in use since 2019 in the node-akeneo integration framework: [https://github.com/donaldbales/node-akeneo](url)
+This module supports Akeneo PIM Web API for Akeneo PIM 3.2 through 6.0+. It has been in use since 2019 in the node-akeneo integration framework: [https://github.com/donaldbales/node-akeneo] (url)
 
-1.6.0 - [https://api.akeneo.com/api-reference-60.html](url)
+1.6.0 - [https://api.akeneo.com/api-reference-60.html] (url)
 
 1.6.1 - Override protocol returned from Akeneo API on GET
+
+1.6.13- Log errors during the import of product models, and products.
 
 ## Installation
 
@@ -180,13 +182,14 @@ export let filenameAssetVariationFiles: string             = 'assetVariationFile
 
 ```
 // File System
-// util.promisify()'d versions of callback type functions
-// see: https://nodejs.org/docs/latest-v12.x/api/fs.html
-export function close(fileDescriptor: number): Promise<any>;
-export function open(path: string, flags: string): Promise<number>;
+export function close(fd: number): Promise<boolean>;
+export function mkdir(path: string): Promise<boolean>;
+export function open(path: string, flags: string = 'r'): Promise<number>;
 export function read(path: string): Promise<Buffer>;
-export function unlink(path: string): Promise<any>;
-export function write(fileDescriptor: number, buffer: Buffer): Promise<any>;
+export function stat(path: string): Promise<boolean>;
+export function symlink(target: string, path: string, type: any = 'dir'): Promise<boolean>;
+export function unlink(path: string): Promise<boolean>;
+export function write(fileDescriptor: number, buffer: Buffer): Promise<number>;
 
 // Codifiers
 // These utility functions take a GUID or Label and turn them into 

@@ -16,11 +16,11 @@
 
 export UV_THREADPOOL_SIZE=8
 
-export AKENEO_BASE_URL="http://localhost:8081"
-export AKENEO_CLIENT_ID=5_6cyzd9ybuog8wo8kcwggw80s84kgkk8co4g4008w0kkc0c08wg
-export AKENEO_PASSWORD=746369602
-export AKENEO_SECRET=5fcde1b0ogkc4ckogowwok4ogwk84ws888c4koc48k8sw04wks
-export AKENEO_USERNAME=pim_1_7883
+export AKENEO_BASE_URL="http://localhost:8082"
+export AKENEO_CLIENT_ID=1_165ybophf3dw4gk0k8k8k00wks0o8ow80ooscosos4sg4sg8sw
+export AKENEO_PASSWORD=a038f7e64
+export AKENEO_SECRET=3temvvkovtessg4sg8480kwosskw84sko8goo0k48cokwkcs4g
+export AKENEO_USERNAME=pim_2_2649
 
 export LOG_LEVEL=info
 
