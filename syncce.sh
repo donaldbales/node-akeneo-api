@@ -31,10 +31,10 @@ node --max-old-space-size=16384 --unhandled-rejections=strict src/index -t expor
 #
 
 export AKENEO_BASE_URL="http://localhost:8082"
-export AKENEO_CLIENT_ID=1_55sndfrcci4oowswcscsks0k8g0o0wsosw4ck8wkggk4ocowc4
-export AKENEO_PASSWORD=3ca2b1560
-export AKENEO_SECRET=2lynmtfmhreokk8kocoowc880kcw8g8swok0888c8swccs84k8
-export AKENEO_USERNAME=pim_2_4641
+export AKENEO_CLIENT_ID=1_3xs1fgwzpneo4ccwkgos0w040csgkc4wo0wcs8c0g4oo4wc0ks
+export AKENEO_PASSWORD=06b3a4e03
+export AKENEO_SECRET=2e1kjn4ge38k4c4c444wsk8884o8sscsksgscogo4owkk8c0ko
+export AKENEO_USERNAME=pim2_0099
 
 node --max-old-space-size=16384 --unhandled-rejections=strict src/index -t importChannels
 node --max-old-space-size=16384 --unhandled-rejections=strict src/index -t importAssociationTypes

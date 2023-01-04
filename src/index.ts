@@ -156,8 +156,10 @@ export function load(filename: string, map: Map<string, any>, key: any): Promise
       try {
         stat = fs.statSync(filename);
       } catch(err) {
-        const error: any = err.message ? err.message : err;
-        logger.error({ moduleName, methodName, error }, `Error!`);
+        if (err.code !== 'ENOENT') {
+          const error: any = err.message ? err.message : err;
+          logger.error({ moduleName, methodName, error }, `Error!`);
+        }
         return resolve(map);
       }
       if (stat &&
@@ -1643,12 +1645,18 @@ export async function patchVndAkeneoCollection(apiUrl: string, docs: any[]): Pro
             }
             let results: any = { statusCode: response.statusCode };
             if (buffer.length > 0) {
+              // a sample response with an errors array
+              // {"line":1,"code":"brooksblue","status_code":422,"message":"Validation failed.","errors":[{"property":"values","message":"The blue value is not in the color attribute option list.","attribute":"color","locale":null,"scope":null}],"data":"{\"code\":\"brooksblue\",\"family\":\"shoes\",\"family_variant\":\"shoes_size\",\"parent\":null,\"categories\":[\"master_men_shoes\"],\"values\":{\"color\":[{\"locale\":null,\"scope\":null,\"data\":\"blue\"}],\"collection\":[{\"locale\":null,\"scope\":null,\"data\":[\"summer_2017\"]}],\"name\":[{\"locale\":null,\"scope\":null,\"data\":\"Brooks blue\"}],\"erp_name\":[{\"locale\":\"en_US\",\"scope\":null,\"data\":\"Brooks blue\"}],\"variation_name\":[{\"locale\":\"en_US\",\"scope\":null,\"data\":\"Brooks blue\"}],\"description\":[{\"locale\":\"en_US\",\"scope\":\"ecommerce\",\"data\":\"Brooks blue\"}]},\"created\":\"2022-12-12T17:20:01+00:00\",\"updated\":\"2022-12-12T17:20:01+00:00\",\"associations\":{\"PACK\":{\"products\":[],\"product_models\":[],\"groups\":[]},\"SUBSTITUTION\":{\"products\":[],\"product_models\":[],\"groups\":[]},\"UPSELL\":{\"products\":[],\"product_models\":[],\"groups\":[]},\"X_SELL\":{\"products\":[],\"product_models\":[],\"groups\":[]}},\"quantified_associations\":{}}"}
+              // a sample response without an errors array
+              // {"line":1,"identifier":"Tshirt-divided-grey-m","status_code":422,"message":"Property \"variation_image\" expects a valid pathname as data, \"/2/b/8/6/2b86a042aac14a9fd28feaf3ca25a147259e49fb_grey.png\" given. Check the expected format on the API documentation.","_links":{"documentation":{"href":"http://api.akeneo.com/api-reference.html#patch_products__code_"}},"data":"{\"identifier\":\"Tshirt-divided-grey-m\",\"values\":{\"variation_image\":[{\"locale\":null,\"scope\":null,\"data\":\"/2/b/8/6/2b86a042aac14a9fd28feaf3ca25a147259e49fb_grey.png\"}]}}"}
               try {
                 results.responses = JSON.parse(`[ ${buffer.toString().replace(/\n/g, ',')} ]`);
                 for (const response of results.responses) {
                   if (response.line !== undefined &&
-                      response.message !== undefined) {
+                      response.status_code !== undefined &&
+                      response.status_code > 299) {
                     response.data = dataArray[response.line - 1];
+                    logger.error({ moduleName, methodName, response }, `Error`);
                   }
                 }
                 results.statusCode = response.statusCode;
@@ -2726,8 +2734,26 @@ export async function importAssociationTypes(): Promise<any> {
   if (buffer.length > 0) {
     const associationTypes: AssociationType[] = JSON.parse(`[ ${buffer} ]`);
     const results = await patchVndAkeneoCollection(apiUrlAssociationTypes(), associationTypes);
-    logger.info({ moduleName, methodName, results });
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
   }
+
   return OK;
 }
 
@@ -2746,8 +2772,26 @@ export async function importAttributes(): Promise<any> {
       delete attribute.group_labels;
     }
     const results = await patchVndAkeneoCollection(apiUrlAttributes(), attributes);
-    logger.info({ moduleName, methodName, results });
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
   }
+
   return OK;
 }
 
@@ -2766,8 +2810,26 @@ export async function importAttributeGroups(): Promise<any> {
       attributeGroup.attributes = [];
     }
     const results = await patchVndAkeneoCollection(apiUrlAttributeGroups(), attributeGroups);
-    logger.info({ moduleName, methodName, results });
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
   }
+
   return OK;
 }
 
@@ -2805,10 +2867,28 @@ export async function importAttributeOptions(): Promise<any> {
       }
       if (attributeCodeAttributeOptions.length > 0) {
         const results = await patchVndAkeneoCollection(apiUrlAttributeOptions(attributeCode), attributeCodeAttributeOptions);
-        logger.info({ moduleName, methodName, results });
+        logger.debug({ moduleName, methodName, results });
+        if (results.responses &&
+            results.responses instanceof Array) {
+          for (const response of results.responses) {
+            let message: string = response.code ? `Code: ${response.code}: ` : '';
+            message += response.message ? `${response.message} ` : '';
+            if (response.errors &&
+                response.errors instanceof Array) {
+              for (const error of response.errors) {
+                message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+                message += error.message ? `${error.message} ` : '';
+              }
+            }
+            if (response.status_code > 299) {
+              logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+            }
+          }
+        }
       }
     }
   }
+
   return OK;
 }
 
@@ -2827,8 +2907,26 @@ export async function importCategories(): Promise<any> {
       delete category.updated;
     }
     const results = await patchVndAkeneoCollection(apiUrlCategories(), categories);
-    logger.info({ moduleName, methodName, results });
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
   }
+
   return OK;
 }
 
@@ -2843,8 +2941,26 @@ export async function importChannels(): Promise<any> {
   if (buffer.length > 0) {
     const channels: Channel[] = JSON.parse(`[ ${buffer} ]`);
     const results = await patchVndAkeneoCollection(apiUrlChannels(), channels);
-    logger.info({ moduleName, methodName, results });
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
   }
+
   return OK;
 }
 
@@ -2854,6 +2970,7 @@ export async function importCurrencies(): Promise<any> {
   logger.error({ moduleName, methodName }, 
     'Akeneo PIM does not support the import of currencies. ' +
     'Currencies are installed by: bin/console pim:installer:db.');
+
   return OK;
 }
 
@@ -2868,8 +2985,26 @@ export async function importFamilies(): Promise<any> {
   if (buffer.length > 0) {
     const families: Family[] = JSON.parse(`[ ${buffer} ]`);
     const results = await patchVndAkeneoCollection(apiUrlFamilies(), families);
-    logger.info({ moduleName, methodName, results });
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
   }
+
   return OK;
 }
 
@@ -2907,10 +3042,28 @@ export async function importFamilyVariants(): Promise<any> {
       }
       if (familyCodeFamilyVariants.length > 0) {
         const results = await patchVndAkeneoCollection(apiUrlFamilyVariants(familyCode), familyCodeFamilyVariants);
-        logger.info({ moduleName, methodName, results });
+        logger.debug({ moduleName, methodName, results });
+        if (results.responses &&
+            results.responses instanceof Array) {
+          for (const response of results.responses) {
+            let message: string = response.code ? `Code: ${response.code}: ` : '';
+            message += response.message ? `${response.message} ` : '';
+            if (response.errors &&
+                response.errors instanceof Array) {
+              for (const error of response.errors) {
+                message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+                message += error.message ? `${error.message} ` : '';
+              }
+            }
+            if (response.status_code > 299) {
+              logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+            }
+          }
+        }
       }
     }
   }
+
   return OK;
 }
 
@@ -2920,6 +3073,7 @@ export async function importLocales(): Promise<any> {
   logger.error({ moduleName, methodName }, 
     'Akeneo PIM does not support the import of locales. ' +
     'Locales are installed by: bin/console pim:installer:db.');
+
   return OK;
 }
 
@@ -2929,6 +3083,7 @@ export async function importMeasureFamilies(): Promise<any> {
   logger.error({ moduleName, methodName }, 
     'Akeneo PIM does not support the import of measure families. ' +
     'Measure Families are installed by: bin/console pim:installer:db.');
+
   return OK;
 }
 
@@ -3031,14 +3186,18 @@ export async function importProducts(): Promise<any> {
   }
 
   for (const response of responses) {
-    let message: string = response.errors ? '' : response.message;
-    if (!(message) &&
-          response.errors instanceof Array) {
+    let message: string = response.identifier ? `Identifier: ${response.identifier}: ` : '';
+    message += response.message ? `${response.message} ` : '';
+    if (response.errors &&
+        response.errors instanceof Array) {
       for (const error of response.errors) {
-        message += message ? ` ${error.message}` : error.message;
+        message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+        message += error.message ? `${error.message} ` : '';
       }
     }
-    logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+    if (response.status_code > 299) {
+      logger.error({ moduleName, methodName, identifier: response.identifier }, `Error: ${message}`);
+    }
   }
 
   logger.info({ moduleName, methodName }, 'Importing linked images...');
@@ -3082,14 +3241,18 @@ export async function importProducts(): Promise<any> {
           patchResults = await patchVndAkeneoCollection(apiUrlProducts(), [ patch ]);
           logger.debug({ moduleName, methodName, code: patch.code, patchResults: inspect(patchResults) });
           for (const response of patchResults.responses) {
-            let message: string = response.errors ? '' : response.message;
-            if (!(message) &&
-                  response.errors instanceof Array) {
+            let message: string = response.identifier ? `Identifier: ${response.identifier}: ` : '';
+            message += response.message ? `${response.message} ` : '';
+            if (response.errors &&
+                response.errors instanceof Array) {
               for (const error of response.errors) {
-                message += message ? ` ${error.message}` : error.message;
+                message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+                message += error.message ? `${error.message} ` : '';
               }
             }
-            logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+            if (response.status_code > 299) {
+              logger.error({ moduleName, methodName, identifier: response.identifier }, `Error: ${message}`);
+            }
           }
         } catch (err) {
           logger.error({ moduleName, methodName, error: inspect(err) }, `Error patching ${mediaFile}`);
@@ -3134,18 +3297,40 @@ export async function importProductModels(): Promise<any> {
   const productModelMediaFilesSet: Set<any> = new Set();
 
   // sort for precedence
-  const keys: any[] = [];
+  const parentsMap: Map<string, Set<string>> = new Map();
   for (const productModel of productModelsMap.values()) {
-    const code: string = productModel.code || '';
     const parent: string = productModel.parent || '';
-    keys.push({ parent, code });
+    const code: string = productModel.code || '';
+    if (!(parentsMap.get(parent))) {
+      const codes: Set<string> = new Set();
+      codes.add(code);
+      parentsMap.set(parent, codes);
+    } else {
+      const codes: Set<string> = parentsMap.get(parent) || new Set();
+      codes.add(code);
+    }
   }
+  //console.log(inspect(parentsMap));
+  const keys: any[] = [];
+  function walk(parent: string, depth: number) {
+    //console.log(`${parent}, ${depth}`);
+    const codes: Set<string> = parentsMap.get(parent) || new Set();
+    const level: number = depth + 1;
+    if (codes.size > 0) {
+      for (const code of codes.values()) {
+        keys.push({ code, level });
+        walk(code, level);
+      }
+    }
+  }
+  walk('', -1);
   keys.sort((a: any, b: any) => {
-    return a.parent < b.parent ? -1 :
-           a.parent > b.parent ? 1 :
-           a.code < b.code ? -1 :
-           a.code > b.code ? 1 : 0;
+    return a.level < b.level ? -1 :
+           a.level > b.level ? 1 : 0;
   });
+
+  //console.log(inspect(keys));
+  //if (methodName !== 'junk') process.exit();
   for (const key of keys) {
     const productModel: any = productModelsMap.get(key.code);
     const code: string = productModel.code ? productModel.code : '';
@@ -3214,14 +3399,18 @@ export async function importProductModels(): Promise<any> {
   }
 
   for (const response of responses) {
-    let message: string = response.errors ? '' : response.message;
-    if (!(message) &&
-          response.errors instanceof Array) {
+    let message: string = response.code ? `Code: ${response.code}: ` : '';
+    message += response.message ? `${response.message} ` : '';
+    if (response.errors &&
+        response.errors instanceof Array) {
       for (const error of response.errors) {
-        message += message ? ` ${error.message}` : error.message;
+        message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+        message += error.message ? `${error.message} ` : '';
       }
     }
-    logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+    if (response.status_code > 299) {
+      logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+    }
   }
 
   logger.info({ moduleName, methodName }, 'Importing linked images...');
@@ -3265,14 +3454,18 @@ export async function importProductModels(): Promise<any> {
           patchResults = await patchVndAkeneoCollection(apiUrlProductModels(), [ patch ]);
           logger.debug({ moduleName, methodName, code: patch.code, patchResults: inspect(patchResults) });
           for (const response of patchResults.responses) {
-            let message: string = response.errors ? '' : response.message;
-            if (!(message) &&
-                  response.errors instanceof Array) {
+            let message: string = response.code ? `Code: ${response.code}: ` : '';
+            message += response.message ? `${response.message} ` : '';
+            if (response.errors &&
+                response.errors instanceof Array) {
               for (const error of response.errors) {
-                message += message ? ` ${error.message}` : error.message;
+                message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+                message += error.message ? `${error.message} ` : '';
               }
             }
-            logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+            if (response.status_code > 299) {
+              logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+            }
           }
         } catch (err) {
           logger.error({ moduleName, methodName, error: inspect(err) }, `Error patching ${mediaFile}`);
