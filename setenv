@@ -16,12 +16,6 @@
 
 export UV_THREADPOOL_SIZE=8
 
-export AKENEO_BASE_URL="http://localhost:8082"
-export AKENEO_CLIENT_ID=1_165ybophf3dw4gk0k8k8k00wks0o8ow80ooscosos4sg4sg8sw
-export AKENEO_PASSWORD=a038f7e64
-export AKENEO_SECRET=3temvvkovtessg4sg8480kwosskw84sko8goo0k48cokwkcs4g
-export AKENEO_USERNAME=pim_2_2649
-
 export LOG_LEVEL=info
 
 export AKENEO_EXPORT_PATH=data

@@ -60,12 +60,15 @@ const possibleTasks: string[] = [
   'exportCurrencies',
   'exportFamilies',
   'exportFamilyVariants',
+  'exportGroups',
   'exportLocales',
   'exportMeasureFamilies',
+  'exportMeasurementFamilies',
   'exportProductMediaFiles',
   'exportProductModels',
   'exportProducts',
   'exportReferenceEntities',
+  'fixSystemOfOrigin',
   'importAssetFamilies',
   'importAssetFamilyAssets',
   'importAssetFamilyAttributeOptions',
@@ -78,6 +81,8 @@ const possibleTasks: string[] = [
   'importChannels',
   'importFamilies',
   'importFamilyVariants',
+  'importMeasureFamilies',
+  'importMeasurementFamilies',
   'importProductModels',
   'importProducts',
   'importReferenceEntities',
@@ -245,11 +250,11 @@ export function load(filename: string, map: Map<string, any>, key: any): Promise
 } 
 
 export let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
-let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
 export let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
+export let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
+export let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
+let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
 let password: string = (process.env.AKENEO_PASSWORD as string) || '';
-let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
-let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
 let secret: string = (process.env.AKENEO_SECRET as string) || '';
 let tokenUrl: string = (process.env.AKENEO_TOKEN_URL as string) || '/api/oauth/v1/token';
 let username: string = (process.env.AKENEO_USERNAME as string) || '';
@@ -349,8 +354,10 @@ export let filenameChannels: string = 'channels.vac';
 export let filenameCurrencies: string = 'currencies.vac';
 export let filenameFamilies: string = 'families.vac';
 export let filenameFamilyVariants: string = 'familyVariants.vac';
+export let filenameGroups: string = 'groups.vac';
 export let filenameLocales: string = 'locales.vac';
 export let filenameMeasureFamilies: string = 'measureFamilies.vac';
+export let filenameMeasurementFamilies: string = 'measurementFamilies.vac';
 export let filenameProducts: string = 'products.vac';
 export let filenameProductModels: string = 'productModels.vac';
 export let filenameProductMediaFiles: string = 'productMediaFiles.vac';
@@ -691,6 +698,10 @@ export function apiUrlFamilyVariants(familyCode: string, code: string = ''): str
   return code ? `${apiUrlFamilies()}/${familyCode}/variants/${code}` : `${apiUrlFamilies()}/${familyCode}/variants`;
 }
 
+export function apiUrlGroups(code: string = ''): string {
+  return code ? `/api/rest/v1/groups/${code}` : '/api/rest/v1/groups';
+}
+
 export function apiUrlAttributes(code: string = ''): string {
   return code ? `/api/rest/v1/attributes/${code}` : '/api/rest/v1/attributes';
 }
@@ -747,8 +758,8 @@ export function apiUrlMeasureFamilies(code: string = ''): string {
   return code ? `/api/rest/v1/measure-families/${code}` : '/api/rest/v1/measure-families';
 }
 
-export function apiUrlMeasurementFamilies(): string {
-  return '/api/rest/v1/measurement-families';
+export function apiUrlMeasurementFamilies(code: string = ''): string {
+  return code ? `/api/rest/v1/measurement-families/${code}` : '/api/rest/v1/measurement-families';
 }
 
 /******************** R E F E R E N C E   E N T I T I E S ********************/
@@ -1529,6 +1540,7 @@ export async function patch(apiUrl: string, data: any): Promise<any> {
   logger.info({ moduleName, methodName, apiUrl }, `Starting...`);
   
   const dataString: string = JSON.stringify(data);
+  logger.debug({ moduleName, methodName, dataString });
 
   const accessToken = await getToken();
 
@@ -1546,6 +1558,7 @@ export async function patch(apiUrl: string, data: any): Promise<any> {
     const request: any = protocol.request(url, options, async (response: any) => {
       const statusCode: number | undefined = response.statusCode;
       const headers: any = response.headers;
+      logger.debug({ moduleName, methodName, statusCode, headers });
       if (statusCode &&
           statusCode > 299) {
         logger.error({ moduleName, methodName, statusCode, headers, url, data }, `Error: ${response.statusMessage}`);
@@ -1630,7 +1643,10 @@ export async function patchVndAkeneoCollection(apiUrl: string, docs: any[]): Pro
               statusCode > 299) {
             logger.error({ moduleName, methodName, statusCode, headers, url, dataString }, `Error: ${response.statusMessage}`);
           }
-          
+          if (statusCode === 502) {
+            // bad gateway
+            tokenResponse = null;
+          }
           response.on('data', (data: Buffer) => {
             logger.debug({ moduleName, methodName, event: 'data', dataString: data.toString()});
             buffer = buffer.length > 0 ? Buffer.concat([ buffer, data ]) : data;
@@ -2110,6 +2126,30 @@ export async function exportFamilyVariants(familyCode: string): Promise<any> {
   return OK;
 }
 
+export async function exportGroups(): Promise<any> {
+  const methodName: string = 'exportGroups';
+  logger.info({ moduleName, methodName }, 'Starting...');
+
+  let Groups: any[];
+  try {
+    Groups = await get(apiUrlGroups());
+    logger.debug({ moduleName, methodName, Groups });
+  } catch (err) {
+    logger.info({ moduleName, methodName, err });
+    return err;
+  }
+  if (Groups !== null &&
+      typeof Groups[Symbol.iterator] === 'function') {
+    const fileName: string = path.join(exportPath, filenameGroups);
+    const fileDesc: number = await open(fileName, 'w');
+    for (const Group of Groups) {
+      await write(fileDesc, Buffer.from(JSON.stringify(Group) + '\n'));
+    }
+    await close(fileDesc);
+  }
+  return OK;
+}
+
 export async function exportLocales(): Promise<any> {
   const methodName: string = 'exportLocales';
   logger.info({ moduleName, methodName }, 'Starting...');
@@ -2152,6 +2192,30 @@ export async function exportMeasureFamilies(): Promise<any> {
     const fileDesc: number = await open(fileName, 'w');
     for (const measureFamily of measureFamilies) {
       await write(fileDesc, Buffer.from(JSON.stringify(measureFamily) + '\n'));
+    }
+    await close(fileDesc);
+  }
+  return OK;
+}
+
+export async function exportMeasurementFamilies(): Promise<any> {
+  const methodName: string = 'exportMeasurementFamilies';
+  logger.info({ moduleName, methodName }, 'Starting...');
+
+  let measurementFamilies: any[];
+  try {
+    measurementFamilies = await get(apiUrlMeasurementFamilies());
+    logger.debug({ moduleName, methodName, measurementFamilies });
+  } catch (err) {
+    logger.info({ moduleName, methodName, err });
+    return err;
+  }
+  if (measurementFamilies !== null &&
+      typeof measurementFamilies[Symbol.iterator] === 'function') {
+    const fileName: string = path.join(exportPath, filenameMeasurementFamilies);
+    const fileDesc: number = await open(fileName, 'w');
+    for (const measurementFamily of measurementFamilies) {
+      await write(fileDesc, Buffer.from(JSON.stringify(measurementFamily) + '\n'));
     }
     await close(fileDesc);
   }
@@ -2858,7 +2922,7 @@ export async function importAttributeOptions(): Promise<any> {
            (i + 1) === attributeOptions.length) {
           const results = await patchVndAkeneoCollection(
             apiUrlAttributeOptions(attributeCode), attributeCodeAttributeOptions);
-          logger.info({ moduleName, methodName, results });
+          logger.debug({ moduleName, methodName, results });
           attributeCode = attributeOptions[i].attribute || '';
           attributeCodeAttributeOptions = [];
         }
@@ -2983,7 +3047,31 @@ export async function importFamilies(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const families: Family[] = JSON.parse(`[ ${buffer} ]`);
+    const families: any[] = JSON.parse(`[ ${buffer} ]`);
+    // remove onboarder
+    for (const family of families) {
+      const attributes: any[] = [];
+      for (const attribute of family.attributes || []) {
+        if (attribute === 'akeneo_onboarder_supplier') {
+          continue;
+        } else {
+          attributes.push(attribute);
+        }
+      }
+      family.attributes = JSON.parse(JSON.stringify(attributes));
+      
+      for (const channel in family.attribute_requirements || {}) {
+        const attributes: any[] = [];
+        for (const attribute of family.attribute_requirements[channel]) {
+          if (attribute === 'akeneo_onboarder_supplier') {
+            continue;
+          } else {
+            attributes.push(attribute);
+          }
+        }
+        family.attribute_requirements[channel] = JSON.parse(JSON.stringify(attributes));
+      }
+    }
     const results = await patchVndAkeneoCollection(apiUrlFamilies(), families);
     logger.debug({ moduleName, methodName, results });
     if (results.responses &&
@@ -3017,7 +3105,22 @@ export async function importFamilyVariants(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const familyVariants: FamilyVariant[] = JSON.parse(`[ ${buffer} ]`);
+    const familyVariants: any[] = JSON.parse(`[ ${buffer} ]`);
+
+    for (const familyVariant of familyVariants) {
+      for (const variantAttributeSet of familyVariant.variant_attribute_sets || []) {
+        const attributes: any[] = [];
+        for (const attribute of variantAttributeSet.attributes) {
+          if (attribute === 'akeneo_onboarder_supplier') {
+            continue;
+          } else {
+            attributes.push(attribute);
+          }
+        }
+        variantAttributeSet.attributes = JSON.parse(JSON.stringify(attributes));
+      }
+    }
+   
     familyVariants.sort((a: any, b: any) => {
       return a.family < b.family ? -1 :
              a.family > b.family ? 1 :
@@ -3032,7 +3135,7 @@ export async function importFamilyVariants(): Promise<any> {
         if (familyCode !== familyVariants[i].family ||
            (i + 1) === familyVariants.length) {
           const results = await patchVndAkeneoCollection(apiUrlFamilyVariants(familyCode), familyCodeFamilyVariants);
-          logger.info({ moduleName, methodName, results });
+          logger.debug({ moduleName, methodName, results });
           familyCode = familyVariants[i].family || '';
           familyCodeFamilyVariants = [];
         }
@@ -3078,11 +3181,67 @@ export async function importLocales(): Promise<any> {
 }
 
 export async function importMeasureFamilies(): Promise<any> {
-  const methodName: string = 'importCurrencies';
+  const methodName: string = 'importMeasureFamilies';
   logger.info({ moduleName, methodName }, 'Starting...');
-  logger.error({ moduleName, methodName }, 
-    'Akeneo PIM does not support the import of measure families. ' +
-    'Measure Families are installed by: bin/console pim:installer:db.');
+  const fileName: string = path.join(exportPath, filenameMeasureFamilies);
+  const fileDesc: number = await open(fileName, 'r');
+  const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
+  await close(fileDesc);
+  if (buffer.length > 0) {
+    const measureFamilies: any[] = JSON.parse(`[ ${buffer} ]`);
+    const results = await patch(apiUrlMeasureFamilies(), measureFamilies);
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
+  }
+
+  return OK;
+}
+
+export async function importMeasurementFamilies(): Promise<any> {
+  const methodName: string = 'importMeasurementFamilies';
+  logger.info({ moduleName, methodName }, 'Starting...');
+  const fileName: string = path.join(exportPath, filenameMeasurementFamilies);
+  const fileDesc: number = await open(fileName, 'r');
+  const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
+  await close(fileDesc);
+  if (buffer.length > 0) {
+    const measurementFamilies: any[] = JSON.parse(`[ ${buffer} ]`);
+    const results = await patch(apiUrlMeasurementFamilies(), measurementFamilies);
+    logger.debug({ moduleName, methodName, results });
+    if (results.responses &&
+        results.responses instanceof Array) {
+      for (const response of results.responses) {
+        let message: string = response.code ? `Code: ${response.code}: ` : '';
+        message += response.message ? `${response.message} ` : '';
+        if (response.errors &&
+            response.errors instanceof Array) {
+          for (const error of response.errors) {
+            message += error.attribute ? `For attribute ${error.attribute}: ` : '';
+            message += error.message ? `${error.message} ` : '';
+          }
+        }
+        if (response.status_code > 299) {
+          logger.error({ moduleName, methodName, code: response.code }, `Error: ${message}`);
+        }
+      }
+    }
+  }
 
   return OK;
 }
@@ -3092,6 +3251,7 @@ export async function importProducts(): Promise<any> {
   logger.info({ moduleName, methodName }, 'Starting...');
 
   const responses: any[] = [];
+  const patchSize: number = patchLimit * promiseLimit;
 
   const mediaFilesMap: Map<string, any> = new Map();
   let stats: fs.Stats | null = null;
@@ -3140,12 +3300,27 @@ export async function importProducts(): Promise<any> {
       }
     }
 
+    if (product.associations &&
+        process.env.AKENEO_SKIP_PRODUCT_ASSOCIATIONS_IMPORT) {
+      delete product.associations;
+    }
+    if (product.groups) {
+      delete product.groups;
+    }
+    if (product.values &&
+        product.values.akeneo_onboarder_supplier) {
+      delete product.values.akeneo_onboarder_supplier;
+    }
+    if (product.uuid) {
+      delete product.uuid;
+    }
+
     if (process.env.AKENEO_DELETE_MODELS &&
         product.parent) {
       product.parent = '';
     }
     products.push(product);
-    if (products.length % 1600 === 0) {
+    if (products.length % patchSize === 0) {
       const productProducts: any[] = [];
       let i: number = 0;
       for (i = 0; i < limit; i++) {
@@ -3357,6 +3532,15 @@ export async function importProductModels(): Promise<any> {
       }
     }
   
+    if (productModel.values &&
+        productModel.values.akeneo_onboarder_supplier) {
+      delete productModel.values.akeneo_onboarder_supplier;
+    }
+    if (productModel.values &&
+        productModel.values.salesOrgStatusTable) {
+      delete productModel.values.salesOrgStatusTable;
+    }
+
     productModels.push(productModel);
     if (productModels.length % 1600 === 0) {
       const productModelProductModels: any[] = [];
@@ -3512,10 +3696,18 @@ export async function importReferenceEntityAttributes(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const referenceEntityAttributes: ReferenceEntityAttribute[] = JSON.parse(`[ ${buffer} ]`);
+    const referenceEntityAttributes: any[] = JSON.parse(`[ ${buffer} ]`);
     for (const referenceEntityAttribute of referenceEntityAttributes) {
       const referenceEntityCode: string = referenceEntityAttribute.delete_reference_entity_code || '';
       delete referenceEntityAttribute.delete_reference_entity_code;
+      delete referenceEntityAttribute._links;
+      let inCount: number = 0;
+      for (const label in referenceEntityAttribute.labels) {
+        ++inCount;
+      }
+      if (!(inCount)) {
+        referenceEntityAttribute.labels['en_US'] = `[${referenceEntityAttribute.code}]`;
+      }
       const results = await patch(
         `${apiUrlReferenceEntityAttributes(referenceEntityCode)}/${referenceEntityAttribute.code}`,
         referenceEntityAttribute);
@@ -3559,9 +3751,9 @@ export async function importReferenceEntityRecords(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const referenceEntityRecords: ReferenceEntityRecord[] = JSON.parse(`[ ${buffer} ]`);
+    const referenceEntityRecords: any[] = JSON.parse(`[ ${buffer} ]`);
     if (referenceEntityRecords.length > 0) {
-      let referenceEntityData: ReferenceEntityRecord[] = [];
+      let referenceEntityData: any[] = [];
       let referenceEntityCode: string = referenceEntityRecords[0].delete_reference_entity_code || '';
       let count: number = 0;
       for (let i = 0; i < referenceEntityRecords.length; i++) {
@@ -3575,7 +3767,18 @@ export async function importReferenceEntityRecords(): Promise<any> {
           referenceEntityData = [];
           count = 0;
         }
+        //
+        if (referenceEntityRecords[i].values &&
+            referenceEntityRecords[i].values.image &&
+            referenceEntityRecords[i].values.image[0] &&
+            process.env.AKENEO_SKIP_REFERENCE_ENTITY_IMAGE_IMPORT) {
+          delete referenceEntityRecords[i].values.image;
+        }
+        //
+        delete referenceEntityRecords[i].created;
+        delete referenceEntityRecords[i].updated;
         delete referenceEntityRecords[i].delete_reference_entity_code;
+        delete referenceEntityRecords[i]._links;
         referenceEntityData.push(referenceEntityRecords[i]);
         count++;
       }
@@ -3650,6 +3853,7 @@ export async function importAssetFamilies(): Promise<any> {
   if (buffer.length > 0) {
     const assetFamilies: AssetFamily[] = JSON.parse(`[ ${buffer} ]`);
     for (const assetFamily of assetFamilies) {
+      delete assetFamily.attribute_as_main_media;
       const results = await patch(`${apiUrlAssetFamilies()}/${assetFamily.code}`, assetFamily);
       // logger.info({ moduleName, methodName, results });
     }
@@ -3666,10 +3870,11 @@ export async function importAssetFamilyAttributes(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const assetFamilyAttributes: AssetFamilyAttribute[] = JSON.parse(`[ ${buffer} ]`);
+    const assetFamilyAttributes: any[] = JSON.parse(`[ ${buffer} ]`);
     for (const assetFamilyAttribute of assetFamilyAttributes) {
       const assetFamilyCode: string = assetFamilyAttribute.delete_asset_family_code || '';
       delete assetFamilyAttribute.delete_asset_family_code;
+      delete assetFamilyAttribute._links;
       const results = await patch(
         `${apiUrlAssetFamilyAttributes(assetFamilyCode)}/${assetFamilyAttribute.code}`,
         assetFamilyAttribute);
@@ -3713,9 +3918,9 @@ export async function importAssetFamilyAssets(): Promise<any> {
   const buffer: string = (await read(fileDesc)).toString().replace(/\n/gi, ', ').slice(0, -2);
   await close(fileDesc);
   if (buffer.length > 0) {
-    const assetFamilyAssets: AssetFamilyAsset[] = JSON.parse(`[ ${buffer} ]`);
+    const assetFamilyAssets: any[] = JSON.parse(`[ ${buffer} ]`);
     if (assetFamilyAssets.length > 0) {
-      let assetFamilyData: AssetFamilyAsset[] = [];
+      let assetFamilyData: any[] = [];
       let assetFamilyCode: string = assetFamilyAssets[0].delete_asset_family_code || '';
       let count: number = 0;
       for (let i = 0; i < assetFamilyAssets.length; i++) {
@@ -3729,6 +3934,17 @@ export async function importAssetFamilyAssets(): Promise<any> {
           assetFamilyData = [];
           count = 0;
         }
+        if (assetFamilyAssets[i].values &&
+            assetFamilyAssets[i].values.image &&
+            assetFamilyAssets[i].values.image[0] &&
+            process.env.AKENEO_SKIP_ASSET_IMAGE_IMPORT) {
+          delete assetFamilyAssets[i].values.image;
+        }
+        //
+        delete assetFamilyAssets[i].created;
+        delete assetFamilyAssets[i].updated;
+        delete assetFamilyAssets[i]._links;
+
         delete assetFamilyAssets[i].delete_asset_family_code;
         assetFamilyData.push(assetFamilyAssets[i]);
         count++;
@@ -3820,8 +4036,10 @@ async function main(...args: string[]): Promise<any> {
   // results = (tasks.importCurrencies) ? await importCurrencies() : []; // Not Supported by API
   results = (tasks.importFamilies) ? await importFamilies() : [];
   results = (tasks.importFamilyVariants) ? await importFamilyVariants() : [];
+//  results = (tasks.importGroups) ? await importGroups() : [];
   // results = (tasks.importLocales) ? await importLocales() : []; // Not Supported by API
-  // results = (tasks.importMeasureFamilies) ? await importMeasureFamilies() : []; // Not Supported by API
+  results = (tasks.importMeasureFamilies) ? await importMeasureFamilies() : [];
+  results = (tasks.importMeasurementFamilies) ? await importMeasurementFamilies() : [];
   results = (tasks.importProducts) ? await importProducts() : [];
   results = (tasks.importProductModels) ? await importProductModels() : [];
   results = (tasks.importReferenceEntities) ? await importReferenceEntities() : [];
@@ -3846,9 +4064,11 @@ async function main(...args: string[]): Promise<any> {
   results = (tasks.exportCurrencies) ? await exportCurrencies() : [];
   results = (tasks.exportFamilies) ? await exportFamilies() : [];
   results = (tasks.exportFamilyVariants) ? await exportFamilyVariants(cla.parameter) : [];
+  results = (tasks.exportGroups) ? await exportGroups() : [];
   results = (tasks.exportLocales) ? await exportLocales() : [];
   results = (tasks.exportMeasureFamilies) ? await exportMeasureFamilies() : [];
-  results = (tasks.exportProducts) ? await exportProducts() : [];
+  results = (tasks.exportMeasurementFamilies) ? await exportMeasurementFamilies() : [];
+  results = (tasks.exportProducts) ? await exportProducts(cla.parameter) : [];
   results = (tasks.exportProductModels) ? await exportProductModels() : [];
   // TODO: results = (tasks.exportPublishedProduct) ? await exportPublishedProduct() : [];
   // TODO: results = (tasks.exportProductMediaFile) ? await exportProductMediaFile() : [];

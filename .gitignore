@@ -1,12 +1,13 @@
 # development files
 
 .DS_Store
-Terminal Saved Output*.txt
-junk
-sync
 202*.txt
 data/
+junk
 notes.txt
+sync
+Terminal Saved Output*.txt
+TODO\ List.txt
 
 # Logs
 logs
