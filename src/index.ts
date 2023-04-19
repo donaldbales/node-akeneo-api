@@ -265,6 +265,12 @@ export function baseProtocol(): string {
 
 export function setBaseUrl(value: string) {
   baseUrl = value;
+  protocol = baseUrl.slice(0, 5) === 'https' ? _https : _http;
+  agent = new protocol.Agent({
+    keepAlive: true,
+    keepAliveMsecs: 300000,
+    maxSockets: Infinity
+  });
 }
 export function setClientId(value: string) {
   clientId = value;
@@ -877,9 +883,9 @@ export function apiUrlAssetTags(): string {
 
 /******************** H T T P / H T T P S ********************/
 
-const protocol: any = baseUrl.slice(0, 5) === 'https' ? _https : _http;
-const agent: any = new protocol.Agent({
-  keepAlive: true, 
+let protocol: any = baseUrl.slice(0, 5) === 'https' ? _https : _http;
+let agent: any = new protocol.Agent({
+  keepAlive: true,
   keepAliveMsecs: 300000,
   maxSockets: Infinity
 });
