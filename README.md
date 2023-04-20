@@ -6,11 +6,19 @@ A NodeJS module that supports the use of Akeneo PIM's Web API
 
 This module supports Akeneo PIM Web API for Akeneo PIM 3.2 through 6.0+. It has been in use since 2019 in the node-akeneo integration framework: [https://github.com/donaldbales/node-akeneo] (url)
 
-1.6.0 - [https://api.akeneo.com/api-reference-60.html] (url)
+1.6.0  - [https://api.akeneo.com/api-reference-60.html] (url)
 
-1.6.1 - Override protocol returned from Akeneo API on GET
+1.6.1  - Override protocol returned from Akeneo API on GET
 
-1.6.13- Log errors during the import of product models, and products.
+1.6.13 - Log errors during the import of product models, and products.
+
+1.6.18 - Ramy added function setBaseUrl().
+
+## Contributors
+
+Donald Bales  don@donaldbales.com
+
+ramykl        ramy.loveridge@tibber.com
 
 ## Installation
 

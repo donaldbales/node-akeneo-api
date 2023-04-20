@@ -258,6 +258,12 @@ let password: string = (process.env.AKENEO_PASSWORD as string) || '';
 let secret: string = (process.env.AKENEO_SECRET as string) || '';
 let tokenUrl: string = (process.env.AKENEO_TOKEN_URL as string) || '/api/oauth/v1/token';
 let username: string = (process.env.AKENEO_USERNAME as string) || '';
+let protocol: any = baseUrl.slice(0, 5) === 'https' ? _https : _http;
+let agent: any = new protocol.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 300000,
+  maxSockets: Infinity
+});
 
 export function baseProtocol(): string {
   return baseUrl.slice(0, baseUrl.indexOf(':'));
@@ -882,13 +888,6 @@ export function apiUrlAssetTags(): string {
 // end of v3
 
 /******************** H T T P / H T T P S ********************/
-
-let protocol: any = baseUrl.slice(0, 5) === 'https' ? _https : _http;
-let agent: any = new protocol.Agent({
-  keepAlive: true,
-  keepAliveMsecs: 300000,
-  maxSockets: Infinity
-});
 
 // delete is a reserved word
 export async function delete_(apiUrl: string, data: any): Promise<any> {
