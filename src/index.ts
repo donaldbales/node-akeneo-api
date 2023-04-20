@@ -953,7 +953,7 @@ export async function delete_(apiUrl: string, data: any): Promise<any> {
   });
 }
 
-function splitMediaFileData(data: string): any {
+export function splitMediaFileData(data: string): any {
   // the underscore is used to separate the guid from the actual filename
   /*
   const parts: any[] = data.split('_');
