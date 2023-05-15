@@ -251,6 +251,7 @@ export function load(filename: string, map: Map<string, any>, key: any): Promise
 
 export let baseUrl: string = (process.env.AKENEO_BASE_URL as string) || 'http://akeneo-pim.local';
 export let exportPath: string = (process.env.AKENEO_EXPORT_PATH as string) || '.';
+export let getLimit: number = Number.parseInt((process.env.AKENEO_GET_LIMIT as string) || '', 10);
 export let patchLimit: number = Number.parseInt((process.env.AKENEO_PATCH_LIMIT as string) || '100', 10);
 export let promiseLimit: number = Number.parseInt((process.env.AKENEO_PROMISE_LIMIT as string) || '16', 10);
 let clientId: string = (process.env.AKENEO_CLIENT_ID as string) || '';
@@ -1010,7 +1011,8 @@ export async function download(data: string, url: string): Promise<any> {
     const options: any = {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/octet-stream'
+        'Content-Type': 'application/octet-stream',
+        'Connection': 'keep-alive'
       },
       method: 'GET'
     };
@@ -1148,16 +1150,18 @@ export async function get(apiUrl: string, callback: any = null): Promise<any> {
   let url: string = apiUrl.indexOf('?') === -1 ? `${baseUrl}${apiUrl}?limit=${patchLimit}` : `${baseUrl}${apiUrl}&limit=${patchLimit}`;
   for ( ; ; ) {
     const accessToken = await getToken();
-
+    const timeout: number = 60 * 1000;
     const result: any = await new Promise((resolve: any, reject: any) => {
 
       let buffer: Buffer = Buffer.from('');
       const options: any = {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Connection': 'keep-alive'
         },
-        method: 'GET'
+        method: 'GET',
+        timeout
       };
       const request: any = protocol.request(url, options, async (response: _http.IncomingMessage) => {
         const statusCode: number | undefined = response.statusCode;
@@ -1515,6 +1519,10 @@ export async function get(apiUrl: string, callback: any = null): Promise<any> {
       results = [];
     }
 
+    if (getLimit > 0 &&
+        getLimit <= results.length) {
+        url = '';
+    } else
     if (result &&
         result._links &&
         result._links.next &&
